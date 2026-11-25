@@ -1,0 +1,28 @@
+# Ambiente e caches
+.venv/
+__pycache__/
+*.py[cod]
+
+# Segredos: chaves de API e configurações locais (o modelo é o .env.example)
+.env
+.env.*
+!.env.example
+
+# Acesso às contas (YouTube, TikTok): só o LEIA-ME entra no repositório
+credenciais/*
+!credenciais/LEIA-ME.txt
+
+# Dados de cada usuário: vídeos, trabalho em andamento, vozes baixadas, gastos e o histórico do canal
+trabalho/
+saida/
+voz/
+canal/
+site/
+gastos.csv
+*.log
+
+# Configuração pessoal do Claude Code (agentes e permissões desta máquina)
+.claude/
+
+# Cópias antigas
+cortes/web/index.antes-das-abas.html

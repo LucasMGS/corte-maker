@@ -1,0 +1,6 @@
+Esta pasta guarda o acesso do corte-maker ao seu canal do YouTube. Não compartilhe nem envie o que está aqui.
+
+1. Salve aqui, sem mudar o nome, o arquivo "client_secret_....json" baixado do Google Cloud
+   (cliente OAuth do tipo "App para computador"). O passo a passo está no README, em "Publicar no YouTube".
+2. O arquivo "youtube_token.json" aparece sozinho depois que você conecta o canal pela interface.
+   Apagar esse arquivo desconecta o canal deste computador.

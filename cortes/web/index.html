@@ -1,0 +1,2311 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corte Maker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23ff3d8b'/%3E%3Cstop offset='1' stop-color='%23ff7a3d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='8' y='2' width='16' height='28' rx='4' fill='url(%23g)'/%3E%3Crect x='11' y='21' width='10' height='3' rx='1.5' fill='%23ffe14a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Bancada de edição noturna. No topo, as abas: cada uma é um endereço (#/criar, #/lives, #/cortes, #/compilacoes).
+   O amarelo é o mesmo do destaque da legenda queimada nos cortes e marca tudo o que está "falando agora". */
+:root {
+  color-scheme: dark;
+  --tinta: #0f0a15;
+  --mesa: #18111f;
+  --mesa-2: #211829;
+  --linha: #33273f;
+  --linha-forte: #4d3d5e;
+  --texto: #f4eef8;
+  --apagado: #ab9cba;
+  --sumido: #7b6c8e;
+  --neon: #ff3d8b;
+  --sol: #ff7a3d;
+  --legenda: #ffe14a;
+  --ok: #3ddc97;
+  --erro: #ff6b6b;
+  --alerta: #ffb547;
+  --brasa: linear-gradient(100deg, var(--neon), var(--sol));
+  --f-titulo: "Archivo Black", "Arial Black", Impact, sans-serif;
+  --f-texto: "Instrument Sans", system-ui, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --raio: 14px;
+  --raio-p: 9px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--tinta);
+  color: var(--texto);
+  font: 15px/1.5 var(--f-texto);
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px));
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(65vw 55vh at 105% -15%, rgba(255, 61, 139, .17), transparent 62%),
+    radial-gradient(55vw 50vh at -12% 112%, rgba(255, 122, 61, .13), transparent 62%);
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--legenda); outline-offset: 2px; border-radius: 6px; }
+h1, h2, h3, p { margin: 0; }
+.so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- topo: marca, abas (cada uma é uma rota) e sinais ---------- */
+body { padding: 0 0 72px; }
+.topo {
+  position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--linha);
+  background: rgba(15, 10, 21, .84); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+}
+.topo-dentro {
+  max-width: 1560px; margin: 0 auto; min-height: 64px;
+  padding: 0 max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px));
+  display: flex; align-items: center; gap: 0 30px; flex-wrap: wrap;
+}
+.marca { display: flex; align-items: center; gap: 12px; font: 21px/1 var(--f-titulo); letter-spacing: .01em; }
+.marca b { font-weight: inherit; background: var(--brasa); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.selo { width: 19px; height: 32px; border-radius: 5px; background: var(--brasa); position: relative; flex: none; }
+.selo::after { content: ""; position: absolute; left: 4px; right: 4px; bottom: 7px; height: 4px; border-radius: 2px; background: var(--legenda); }
+.rotas { flex: 1; min-width: 0; align-self: stretch; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.rotas::-webkit-scrollbar { display: none; }
+.rotas a {
+  position: relative; display: inline-flex; align-items: center; gap: 9px; min-height: 64px; padding: 0 15px;
+  color: var(--apagado); text-decoration: none; white-space: nowrap;
+  font: 14px/1 var(--f-titulo); text-transform: uppercase; letter-spacing: .04em; transition: color .15s;
+}
+.rotas a:hover { color: var(--texto); }
+.rotas a::after {
+  content: ""; position: absolute; left: 15px; right: 15px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0;
+  background: var(--brasa); transform: scaleX(0); transition: transform .2s ease-out;
+}
+.rotas a[aria-current="page"] { color: var(--texto); }
+.rotas a[aria-current="page"]::after { transform: scaleX(1); }
+.rotas a:focus-visible { outline-offset: -4px; }
+.rotas small {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px;
+  font: 600 11.5px/1.2 var(--f-mono); letter-spacing: 0; text-transform: none;
+  color: var(--apagado); background: var(--mesa-2); border: 1px solid var(--linha);
+}
+.rotas small:empty { display: none; }
+.rotas a[aria-current="page"] small { color: var(--texto); border-color: var(--linha-forte); }
+.rotas a[data-ativo] small { color: var(--legenda); border-color: rgba(255, 225, 74, .4); }
+.rotas a[data-vivo] small { color: #fff; background: var(--neon); border-color: var(--neon); }
+.rotas a[data-vivo] small::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulsar 1.2s ease-in-out infinite; }
+.rotas a[data-novo] > span::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 7px; border-radius: 50%; background: var(--legenda); vertical-align: 5px; }
+.sinais { display: flex; gap: 8px; flex-wrap: wrap; }
+.sinal {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--linha); background: var(--mesa); color: var(--apagado); font-size: 13px; font-weight: 500;
+}
+.sinal::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--sumido); }
+.sinal[data-tom="ok"]::before { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.sinal[data-tom="alerta"] { color: var(--alerta); border-color: rgba(255, 181, 71, .35); }
+.sinal[data-tom="alerta"]::before { background: var(--alerta); }
+.sinal[data-tom="erro"] { color: var(--erro); border-color: rgba(255, 107, 107, .4); }
+.sinal[data-tom="erro"]::before { background: var(--erro); }
+.rotas small i { font-style: normal; }
+/* sem largura para marca, abas e sinais na mesma linha: as abas descem para uma linha só delas */
+@media (max-width: 1080px) {
+  .topo-dentro { padding-top: 12px; row-gap: 2px; }
+  .sinais { margin-left: auto; flex-wrap: nowrap; }
+  .rotas { order: 3; flex: none; width: calc(100% + 30px); margin-inline: -15px; }
+  .rotas a { min-height: 46px; }
+}
+@media (max-width: 860px) {
+  .sinal { padding: 4px 10px; font-size: 12px; }
+  /* no celular, o que está em ordem vira só a luz verde; aviso e erro continuam por extenso */
+  .sinal[data-tom="ok"] { font-size: 0; gap: 0; padding: 7px; }
+  .rotas { width: calc(100% + 16px); margin-inline: -8px; }
+  .rotas a { min-height: 44px; padding-inline: 8px; gap: 6px; font-size: 12px; letter-spacing: .02em; }
+  .rotas a::after { left: 8px; right: 8px; }
+  .rotas small { padding: 2px 6px; font-size: 11px; }
+  .rotas small i { display: none; }
+  main { padding-top: 22px; }
+}
+@media (max-width: 480px) {
+  .par { grid-template-columns: minmax(0, 1fr); }
+  /* para as quatro abas caberem sem rolar: só fica o número do que está acontecendo agora */
+  .rotas a:not([data-vivo]):not([data-ativo]) small { display: none; }
+}
+
+/* ---------- páginas ---------- */
+main {
+  max-width: 1560px; margin: 0 auto;
+  padding: 30px max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px));
+}
+.pagina { display: flex; flex-direction: column; gap: 26px; min-width: 0; animation: entrar .22s ease-out; }
+@keyframes entrar { from { transform: translateY(8px); } } /* só movimento: nunca fica invisível se a animação parar */
+.pagina-topo { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 28px; flex-wrap: wrap; }
+.pagina-topo h1 { font: clamp(24px, 3.2vw, 34px)/1.05 var(--f-titulo); text-transform: uppercase; letter-spacing: .01em; text-wrap: balance; }
+.sub { margin-top: 8px; max-width: 72ch; color: var(--apagado); font-size: 14.5px; }
+.pagina-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.busca { width: min(300px, 100%); }
+.pagina section { min-width: 0; }
+
+.rotulo {
+  display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--apagado);
+}
+
+/* ---------- painel (novo corte) ---------- */
+/* a página Criar: o formulário em dois cartões e, ao lado, o que está sendo produzido */
+.criar { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(300px, 1fr); gap: 28px; align-items: start; }
+.painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 20px; align-items: start; min-width: 0; }
+.cartao {
+  background: var(--mesa); border: 1px solid var(--linha); border-radius: var(--raio);
+  padding: 22px; display: flex; flex-direction: column; gap: 20px; min-width: 0;
+}
+.cartao-titulo { display: flex; align-items: center; gap: 10px; font: 15px/1 var(--f-titulo); text-transform: uppercase; letter-spacing: .04em; }
+.cartao-titulo i { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--brasa); color: #1a0b12; font: 600 12px var(--f-mono); }
+.producao { position: sticky; top: 96px; display: flex; flex-direction: column; min-width: 0; }
+.vazio-leve { border: 1.5px dashed var(--linha); border-radius: var(--raio); padding: 22px; color: var(--sumido); font-size: 14px; text-align: center; }
+@media (max-width: 1180px) {
+  .criar { grid-template-columns: minmax(0, 1fr); }
+  .producao { position: static; }
+}
+.modo { min-width: min(100%, 360px); }
+.modo a { text-align: center; border-radius: 7px; padding: 7px 14px 8px; line-height: 1.2; color: var(--apagado); text-decoration: none; transition: background .15s, color .15s; }
+.modo a strong { display: block; font-size: 13.5px; font-weight: 600; }
+.modo a small { font: 11px var(--f-mono); color: var(--sumido); }
+.modo a:hover { color: var(--texto); }
+.modo a[aria-current="true"] { background: var(--mesa-2); color: var(--texto); box-shadow: inset 0 0 0 1px var(--linha-forte); }
+.modo a[aria-current="true"] small { color: var(--legenda); }
+.modo a[data-modo="vivo"][aria-current="true"] { box-shadow: inset 0 0 0 1px var(--neon); }
+.campo { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dica { font-size: 12.5px; color: var(--sumido); }
+
+.entrada {
+  border: 1.5px dashed var(--linha-forte); border-radius: var(--raio-p); background: var(--tinta);
+  transition: border-color .15s, background .15s;
+}
+.entrada:focus-within { border-color: var(--sol); border-style: solid; }
+.entrada.solte { border-color: var(--legenda); background: rgba(255, 225, 74, .06); }
+.entrada textarea {
+  display: block; width: 100%; min-height: 76px; resize: vertical; border: 0; outline: 0; background: transparent;
+  padding: 12px 14px 4px; font: 13.5px/1.5 var(--f-mono);
+}
+.entrada textarea::placeholder { color: var(--sumido); font-family: var(--f-texto); font-size: 14.5px; }
+.entrada-pe { display: flex; align-items: center; gap: 10px; padding: 6px 8px 8px 14px; flex-wrap: wrap; }
+.entrada-pe .dica { flex: 1; min-width: 120px; }
+
+.fantasma {
+  border: 1px solid var(--linha-forte); background: transparent; border-radius: 8px; padding: 6px 12px;
+  font-size: 13px; font-weight: 600; color: var(--texto); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  transition: border-color .15s, background .15s;
+}
+.fantasma:hover { border-color: var(--texto); background: rgba(255, 255, 255, .05); }
+
+.par { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; }
+.passos { display: inline-flex; align-items: center; border: 1px solid var(--linha-forte); border-radius: var(--raio-p); background: var(--tinta); }
+.passos button { width: 38px; height: 40px; border: 0; background: transparent; font-size: 18px; color: var(--apagado); border-radius: var(--raio-p); }
+.passos button:hover { color: var(--texto); background: rgba(255, 255, 255, .06); }
+.passos input {
+  width: 42px; border: 0; background: transparent; text-align: center; font: 600 16px var(--f-mono); outline: 0;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.passos input::-webkit-outer-spin-button, .passos input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.fatias { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--linha-forte); border-radius: var(--raio-p); background: var(--tinta); padding: 3px; gap: 3px; }
+.fatias label { position: relative; text-align: center; border-radius: 7px; padding: 5px 4px 6px; cursor: pointer; line-height: 1.2; color: var(--apagado); transition: background .15s, color .15s; }
+.fatias label strong { display: block; font-size: 13px; font-weight: 600; }
+.fatias label small { font: 11px var(--f-mono); color: var(--sumido); }
+.fatias input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.fatias label:has(input:checked) { background: var(--mesa-2); color: var(--texto); box-shadow: inset 0 0 0 1px var(--linha-forte); }
+.fatias label:has(input:checked) small { color: var(--legenda); }
+.fatias label:has(input:focus-visible) { outline: 2px solid var(--legenda); outline-offset: 2px; }
+
+.formatos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.formato {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 6px 10px;
+  border: 1px solid var(--linha); border-radius: var(--raio-p); background: var(--tinta); cursor: pointer; text-align: center;
+  transition: border-color .15s, transform .15s;
+}
+.formato:hover { border-color: var(--linha-forte); }
+.formato input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.formato:has(input:checked) { border-color: var(--sol); background: linear-gradient(180deg, rgba(255, 122, 61, .1), transparent 70%), var(--tinta); }
+.formato:has(input:focus-visible) { outline: 2px solid var(--legenda); outline-offset: 2px; }
+.formato strong { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.formato small { font-size: 11px; color: var(--sumido); line-height: 1.25; }
+/* miniatura do enquadramento: o bloco claro é o vídeo, a barra amarela é a legenda */
+.mini { width: 36px; height: 64px; border-radius: 5px; position: relative; overflow: hidden; background: linear-gradient(160deg, #3a2a4d, #251a33); }
+.mini i { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); background: linear-gradient(135deg, #8d7ba6, #c9bcd9); }
+.mini u { position: absolute; left: 8px; right: 8px; height: 3px; border-radius: 2px; background: var(--legenda); }
+.mini[data-f="blur"] i { height: 27px; }      .mini[data-f="blur"] u { top: 50px; }
+.mini[data-f="cheio"] i { height: 100%; }     .mini[data-f="cheio"] u { top: 46px; }
+.mini[data-f="inteiro"] i { height: 20px; }   .mini[data-f="inteiro"] u { top: 46px; }
+.mini[data-f="preto"] { background: #08060b; }
+.mini[data-f="preto"] i { height: 20px; }     .mini[data-f="preto"] u { top: 46px; }
+.mini[data-f="camera"] i { top: 0; transform: none; height: 25px; background: linear-gradient(135deg, #b98a74, #e6c3ae); }
+.mini[data-f="camera"] b { position: absolute; left: 0; right: 0; bottom: 0; height: 39px; background: linear-gradient(135deg, #8d7ba6, #c9bcd9); }
+.mini[data-f="camera"] u { top: 33px; }
+.cam-painel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--linha-forte); border-radius: var(--raio-p); }
+.cam-painel[hidden] { display: none; }
+.cam-painel span { flex: 1; min-width: 160px; font-size: 13px; color: var(--apagado); }
+.cam-painel span[data-falta] { color: var(--sol); }
+dialog.visor-cam { width: min(900px, calc(100vw - 32px)); overflow-y: auto; }
+.visor-cam .visor-info { overflow: visible; }
+.m-quadro { position: relative; line-height: 0; background: #000; border-radius: 10px; overflow: hidden; cursor: crosshair; touch-action: none; user-select: none; min-height: 120px; width: fit-content; max-width: 100%; margin: 0 auto; }
+/* a foto cabe na janela junto com os botões, mesmo em tela baixa: o quadro marcado é medido sobre ela */
+.m-quadro img { display: block; max-width: 100%; max-height: calc(100vh - 300px); width: auto; height: auto; pointer-events: none; }
+.m-quadro p { line-height: 1.4; color: var(--apagado); padding: 48px 16px; text-align: center; margin: 0; }
+#m-caixa { position: absolute; border: 2px solid var(--sol); background: rgba(255, 122, 61, .18); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .45); pointer-events: none; }
+#m-caixa[hidden] { display: none; }
+.v-editar { display: flex; flex-direction: column; gap: 10px; }
+.v-editar #v-controles, .v-editar #v-narra { display: flex; flex-direction: column; gap: 10px; }
+.v-editar [hidden] { display: none !important; }
+.v-linha { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.v-processando { padding: 8px 10px; border-radius: 8px; background: var(--tinta); border: 1px solid var(--linha); }
+.v-processando span { flex: 1; font-size: 13px; color: var(--apagado); display: inline-flex; align-items: center; gap: 8px; }
+.giro { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--linha-forte); border-top-color: var(--sol); animation: girar .8s linear infinite; flex: none; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.m-dica { margin: 0; font-size: 14px; color: var(--texto); }
+.m-dica b { color: var(--sol); }
+.v-linha select { flex: 1; min-width: 190px; width: auto; }
+.v-editar textarea { min-height: 0; font-size: 13.5px; }
+
+.texto {
+  width: 100%; border: 1px solid var(--linha-forte); border-radius: var(--raio-p); background: var(--tinta);
+  padding: 10px 12px; outline: 0; transition: border-color .15s;
+}
+textarea.texto { resize: vertical; min-height: 64px; }
+.texto:focus { border-color: var(--sol); }
+.texto::placeholder { color: var(--sumido); }
+select.texto { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--apagado) 50%), linear-gradient(135deg, var(--apagado) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
+
+.mais-corpo { display: flex; flex-direction: column; gap: 16px; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.trio .texto { font-family: var(--f-mono); font-size: 13.5px; }
+.chave { display: flex; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer; }
+.chave span { display: flex; flex-direction: column; }
+.chave small { font-size: 12.5px; color: var(--sumido); }
+.chave input { appearance: none; flex: none; width: 42px; height: 24px; border-radius: 999px; background: var(--linha-forte); position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+.chave input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--texto); transition: transform .15s; }
+.chave input:checked { background: var(--sol); }
+.chave input:checked::after { transform: translateX(18px); }
+
+/* modo ao vivo: campos que só valem para um dos modos, e a etiqueta pulsante */
+.so-vivo { display: none; }
+.vivo .so-vivo { display: flex; }
+.vivo .so-gravado { display: none; }
+.vivo .par, .vivo .trio { grid-template-columns: minmax(0, 1fr); }
+.no-ar { display: inline-flex; align-items: center; gap: 6px; font: 700 10.5px var(--f-texto); letter-spacing: .09em; text-transform: uppercase; color: #fff; background: var(--neon); border-radius: 4px; padding: 3px 7px; vertical-align: 3px; white-space: nowrap; }
+.no-ar::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulsar 1.2s ease-in-out infinite; }
+@keyframes pulsar { 50% { opacity: .25; } }
+.trab[data-vivo="1"][data-estado="rodando"] { border-color: rgba(255, 61, 139, .5); }
+.placar-vivo { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0; }
+.placar-vivo div { display: flex; flex-direction: column; gap: 2px; }
+.placar-vivo dd { margin: 0; font: 600 17px var(--f-mono); }
+.placar-vivo dd.fala { color: var(--legenda); }
+
+.gerar {
+  border: 0; border-radius: var(--raio-p); padding: 15px 18px; background: var(--brasa); color: #1a0b12;
+  font: 16px/1 var(--f-titulo); text-transform: uppercase; letter-spacing: .03em;
+  box-shadow: 0 10px 30px -12px rgba(255, 80, 110, .7); transition: transform .12s, filter .12s, box-shadow .12s;
+}
+.gerar:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.gerar:active { transform: translateY(1px); }
+.gerar:disabled { filter: grayscale(.7) brightness(.7); cursor: progress; transform: none; }
+
+/* ---------- seções das páginas ---------- */
+.secao-topo { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.secao-topo h2 { font: 15px/1 var(--f-titulo); text-transform: uppercase; letter-spacing: .04em; }
+.conta { font: 12.5px var(--f-mono); color: var(--sumido); }
+.blocos { display: flex; flex-direction: column; gap: 34px; min-width: 0; }
+.dica a { color: var(--texto); text-underline-offset: 3px; }
+.dica b { color: var(--apagado); font-weight: 600; }
+/* as lives lado a lado quando a tela dá: quatro no ar cabem sem rolar tanto */
+.lista-trab.lives-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 500px), 1fr)); gap: 16px; align-items: start; }
+.lives-grade > .vazio { grid-column: 1 / -1; }
+.nova-live { display: flex; gap: 8px; align-items: stretch; }
+.nova-live .texto { flex: 1; min-width: 0; font: 13.5px var(--f-mono); }
+.nova-live .texto::placeholder { font-family: var(--f-texto); font-size: 14.5px; }
+.nova-live .cheio { white-space: nowrap; cursor: pointer; }
+.adicionar { display: flex; flex-direction: column; gap: 8px; }
+.filtros { display: inline-flex; gap: 4px; margin-left: auto; }
+.filtros button { border: 1px solid var(--linha); background: transparent; border-radius: 999px; padding: 4px 11px; font-size: 12.5px; font-weight: 600; color: var(--apagado); }
+.filtros button:hover { color: var(--texto); border-color: var(--linha-forte); }
+.filtros button[aria-pressed="true"] { background: var(--mesa-2); border-color: var(--linha-forte); color: var(--texto); }
+
+.lista-trab { display: flex; flex-direction: column; gap: 12px; }
+.trab { background: var(--mesa); border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.trab[data-estado="rodando"] { border-color: rgba(255, 122, 61, .45); }
+.trab[data-estado="erro"] { border-color: rgba(255, 107, 107, .45); }
+.trab-topo { display: flex; align-items: flex-start; gap: 12px; }
+.trab-nome { flex: 1; min-width: 0; }
+.trab-nome strong { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.trab-nome small { color: var(--sumido); font: 12px var(--f-mono); overflow-wrap: anywhere; }
+.fechar { border: 0; background: transparent; color: var(--sumido); width: 30px; height: 30px; border-radius: 8px; font-size: 18px; line-height: 1; flex: none; }
+.fechar:hover { color: var(--texto); background: rgba(255, 255, 255, .07); }
+
+.trilho { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.trilho li { font-size: 12px; font-weight: 600; color: var(--sumido); padding-top: 9px; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trilho li::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 2px; background: var(--linha); }
+.trilho li.feito { color: var(--apagado); }
+.trilho li.feito::before { background: var(--sol); }
+.trilho li.agora { color: var(--legenda); }
+.trilho li.agora::before { background: linear-gradient(90deg, var(--legenda) var(--p, 35%), var(--linha) var(--p, 35%)); }
+.trilho li.agora.solto::before { background: linear-gradient(90deg, var(--linha), var(--legenda), var(--linha)); background-size: 200% 100%; animation: correr 1.3s linear infinite; }
+@keyframes correr { from { background-position: 200% 0; } to { background-position: 0 0; } }
+
+.ultima { font: 12.5px/1.45 var(--f-mono); color: var(--apagado); overflow-wrap: anywhere; }
+.ctx { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.ctx-linha { display: flex; gap: 8px; align-items: stretch; }
+.ctx-linha textarea { flex: 1; min-width: 0; min-height: 0; font-size: 13.5px; }
+.ctx .fantasma:disabled { opacity: .5; cursor: default; }
+.trab-cab, .trab-resto { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.trab-resto:empty, .trab-cab:empty { display: none; }
+.previa { display: flex; flex-direction: column; gap: 10px; }
+.previa-tela { display: flex; flex-direction: column; gap: 6px; }
+.previa-tela video { display: block; width: 100%; max-height: 46vh; aspect-ratio: 16 / 9; background: #000; border-radius: var(--raio-p); border: 1px solid var(--linha); }
+.previa-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.previa-acoes .espaco { flex: 1; }
+.previa-acoes select { width: auto; padding-block: 7px; }
+.previa-acoes .cheio { cursor: pointer; }
+.previa-acoes .cheio:disabled { filter: grayscale(.7) brightness(.7); cursor: progress; }
+.ctx-dupla { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 4px; }
+.ultima b { color: var(--legenda); font-weight: 600; }
+.nota-aviso { font-size: 13px; color: var(--alerta); background: rgba(255, 181, 71, .08); border: 1px solid rgba(255, 181, 71, .25); border-radius: var(--raio-p); padding: 9px 12px; overflow-wrap: anywhere; }
+.nota-quase { font-size: 13px; color: var(--texto); background: rgba(255, 225, 74, .07); border: 1px solid rgba(255, 225, 74, .28); border-radius: var(--raio-p); padding: 9px 12px; }
+.nota-quase b { color: var(--legenda); }
+.nota-erro { font-size: 13.5px; color: var(--erro); overflow-wrap: anywhere; }
+.trab details summary { cursor: pointer; font-size: 12.5px; color: var(--sumido); width: fit-content; }
+.trab details summary:hover { color: var(--texto); }
+.trab pre { margin: 8px 0 0; max-height: 200px; overflow: auto; font: 12px/1.5 var(--f-mono); color: var(--apagado); background: var(--tinta); border-radius: var(--raio-p); padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.trab-pe { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.selo-ok { color: var(--ok); font-weight: 600; font-size: 14px; }
+
+/* ---------- biblioteca ---------- */
+.sessoes { display: flex; flex-direction: column; gap: 34px; }
+.sessao { display: flex; flex-direction: column; gap: 14px; min-width: 0; scroll-margin-top: 92px; }
+.sessao.nova .sessao-topo h3::after { content: "novo"; margin-left: 10px; font: 600 10.5px var(--f-texto); letter-spacing: .08em; text-transform: uppercase; color: #1a0b12; background: var(--legenda); border-radius: 4px; padding: 2px 6px; vertical-align: 3px; }
+.sessao-topo { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.sessao-topo > div:first-child { flex: 1; min-width: 220px; }
+.sessao-topo h3 { font-size: 17px; font-weight: 700; line-height: 1.25; text-wrap: balance; overflow-wrap: anywhere; }
+.sessao-topo p { font-size: 13px; color: var(--sumido); margin-top: 3px; }
+.sessao-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* linha do tempo do vídeo original: cada marca é um corte, na posição de onde ele saiu */
+.tempo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; font: 11.5px var(--f-mono); color: var(--sumido); }
+.tempo-faixa { position: relative; height: 22px; border-radius: 5px; background: repeating-linear-gradient(90deg, var(--mesa-2) 0 1px, transparent 1px 10%), var(--mesa); border: 1px solid var(--linha); }
+.tempo-faixa button { position: absolute; top: -1px; bottom: -1px; min-width: 7px; border: 0; padding: 0; border-radius: 3px; background: var(--sol); opacity: .85; transition: background .12s, transform .12s, opacity .12s; }
+.tempo-faixa button:hover, .tempo-faixa button.aceso { background: var(--legenda); opacity: 1; transform: scaleY(1.35); z-index: 1; }
+
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+@media (min-width: 700px) { .grade { grid-template-columns: repeat(auto-fill, minmax(176px, 208px)); } }
+.corte { display: flex; flex-direction: column; gap: 9px; border: 0; background: transparent; padding: 0; text-align: left; min-width: 0; }
+.quadro { position: relative; display: block; aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: linear-gradient(160deg, var(--mesa-2), var(--mesa)); border: 1px solid var(--linha); transition: transform .18s, border-color .18s, box-shadow .18s; }
+.quadro img, .quadro video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.quadro::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15, 10, 21, .55), transparent 22%, transparent 70%, rgba(15, 10, 21, .75)); pointer-events: none; }
+.corte:hover .quadro, .corte:focus-visible .quadro, .corte.aceso .quadro { transform: translateY(-4px); border-color: var(--sol); box-shadow: 0 18px 40px -18px rgba(255, 90, 100, .65); }
+.corte:focus-visible { outline: none; }
+.corte:focus-visible .quadro { outline: 2px solid var(--legenda); outline-offset: 2px; }
+.ordem { position: absolute; z-index: 1; left: 10px; top: 9px; font: 15px var(--f-titulo); color: var(--texto); text-shadow: 0 1px 6px rgba(0, 0, 0, .7); }
+.nota { position: absolute; z-index: 1; right: 8px; top: 8px; font: 600 12.5px var(--f-mono); padding: 3px 8px; border-radius: 999px; background: rgba(15, 10, 21, .78); color: var(--texto); border: 1px solid var(--linha-forte); }
+.nota[data-n="alta"] { background: var(--legenda); border-color: var(--legenda); color: #1a0b12; }
+.nota[data-n="media"] { border-color: var(--legenda); color: var(--legenda); }
+.dur { position: absolute; z-index: 1; right: 10px; bottom: 9px; font: 600 12px var(--f-mono); color: var(--texto); }
+.corte-titulo { font-size: 14px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+
+.vazio { border: 1.5px dashed var(--linha); border-radius: var(--raio); padding: 44px 24px; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+.vazio-quadros { display: flex; gap: 12px; align-items: flex-end; }
+.vazio-quadros i { width: 54px; aspect-ratio: 9 / 16; border-radius: 9px; border: 1.5px dashed var(--linha-forte); position: relative; }
+.vazio-quadros i:nth-child(2) { width: 68px; border-style: solid; border-color: var(--sol); background: linear-gradient(180deg, rgba(255, 122, 61, .14), transparent); }
+.vazio-quadros i:nth-child(2)::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 22px; height: 5px; border-radius: 3px; background: var(--legenda); }
+.vazio h3 { font: 17px/1.2 var(--f-titulo); text-transform: uppercase; }
+.vazio p { color: var(--apagado); max-width: 46ch; }
+
+/* ---------- compilações: temas propostos pela IA e vídeos horizontais prontos ---------- */
+.temas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 14px; align-items: start; }
+.temas:empty, .comps:empty { display: none; }
+.tema { background: var(--mesa); border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.tema-topo { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.tema-topo > div { flex: 1; min-width: 220px; }
+.tema-topo h3 { font-size: 16px; font-weight: 700; line-height: 1.25; text-wrap: balance; overflow-wrap: anywhere; }
+.tema-topo p { font-size: 13px; color: var(--sumido); margin-top: 3px; }
+.tema-topo .cheio { cursor: pointer; white-space: nowrap; }
+.tema-topo .cheio:disabled { filter: grayscale(.7) brightness(.7); cursor: default; }
+.tema-motivo { font-size: 13.5px; color: var(--apagado); }
+.tira { display: flex; gap: 6px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; counter-reset: ordem; }
+.tira li { position: relative; width: 46px; aspect-ratio: 9 / 16; border-radius: 6px; overflow: hidden; background: var(--mesa-2); border: 1px solid var(--linha); counter-increment: ordem; }
+.tira li::after { content: counter(ordem); position: absolute; left: 4px; top: 2px; font: 11px var(--f-titulo); color: var(--texto); text-shadow: 0 1px 4px #000; }
+.tira img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.comps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 26px 22px; align-items: start; }
+.comp { gap: 14px; }
+.comp .sessao-topo h3 { font-size: 16px; }
+.comp-capa { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--linha); border-radius: 12px; overflow: hidden; padding: 0; background: linear-gradient(160deg, var(--mesa-2), var(--mesa)); transition: transform .18s, border-color .18s, box-shadow .18s; }
+.comp-capa:hover, .comp-capa:focus-visible { transform: translateY(-3px); border-color: var(--sol); box-shadow: 0 18px 40px -18px rgba(255, 90, 100, .65); }
+.comp-capa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.comp-capa .dur { background: rgba(15, 10, 21, .78); border-radius: 999px; padding: 2px 8px; right: 8px; bottom: 8px; }
+.comp-info { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.comp .sessao-acoes .cheio { cursor: pointer; }
+dialog.visor-largo { width: min(1080px, calc(100vw - 32px)); overflow-y: auto; }
+.largo-video { background: #000; }
+.largo-video video { display: block; width: 100%; aspect-ratio: 16 / 9; max-height: 62vh; background: #000; }
+.visor-largo .visor-info { overflow: visible; }
+.visor-largo .bloco pre { max-height: 260px; overflow-y: auto; }
+
+/* ---------- visor ---------- */
+dialog.visor { border: 1px solid var(--linha-forte); border-radius: 18px; padding: 0; background: var(--mesa); color: var(--texto); width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: hidden; }
+dialog.visor::backdrop { background: rgba(8, 4, 12, .82); backdrop-filter: blur(6px); }
+dialog.visor[open] { animation: surgir .18s ease-out; }
+@keyframes surgir { from { transform: translateY(12px) scale(.98); } } /* só movimento: nunca fica invisível se a animação parar */
+.visor-grade { display: grid; grid-template-columns: auto minmax(0, 1fr); max-height: calc(100vh - 34px); }
+.visor-video { background: #000; display: flex; align-items: center; justify-content: center; }
+.visor-video video { display: block; height: min(calc(100vh - 34px), 760px); aspect-ratio: 9 / 16; max-width: 100%; background: #000; }
+.visor-info { padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; min-width: 0; }
+.visor-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.visor-topo span { font: 12px var(--f-mono); color: var(--sumido); letter-spacing: .06em; }
+.placar { display: flex; align-items: baseline; gap: 10px; }
+.placar b { font: 46px/0.9 var(--f-titulo); color: var(--legenda); }
+.placar span { color: var(--apagado); font-size: 13.5px; }
+.bloco { display: flex; flex-direction: column; gap: 8px; }
+.bloco-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bloco h2 { font-size: 20px; font-weight: 700; line-height: 1.25; text-wrap: balance; overflow-wrap: anywhere; }
+.bloco pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.5 var(--f-texto); background: var(--tinta); border: 1px solid var(--linha); border-radius: var(--raio-p); padding: 12px 14px; }
+.bloco p { color: var(--apagado); font-size: 14px; }
+.ficha { display: flex; gap: 22px; flex-wrap: wrap; margin: 0; }
+.ficha div { display: flex; flex-direction: column; gap: 2px; }
+.ficha dd { margin: 0; font: 13.5px var(--f-mono); }
+.visor-pe { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding-top: 6px; }
+.visor-pe .espaco { flex: 1; }
+.seta { width: 38px; height: 36px; padding: 0; justify-content: center; font-size: 16px; }
+.cheio { border: 0; background: var(--brasa); color: #1a0b12; font-weight: 700; border-radius: 8px; padding: 8px 14px; font-size: 13.5px; text-decoration: none; display: inline-flex; align-items: center; }
+.cheio:hover { filter: brightness(1.08); }
+.cheio:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.t-passos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--apagado); }
+.t-passos a { color: var(--texto); }
+.t-passos b { color: var(--texto); }
+.t-chaves { display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 760px) {
+  .visor-grade { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
+  .visor-video video { height: auto; width: min(100%, 300px); }
+  .visor-info { overflow: visible; }
+}
+
+/* ---------- publicar no YouTube: a janela de conferência e o andamento dos envios ---------- */
+dialog.visor-pub { width: min(580px, calc(100vw - 32px)); overflow-y: auto; }
+.visor-pub .visor-info { overflow: visible; }
+.visor-pub form, .p-etapa { display: flex; flex-direction: column; gap: 18px; }
+.p-etapa h2 { font-size: 19px; font-weight: 700; line-height: 1.25; }
+.p-etapa > p { color: var(--apagado); font-size: 14.5px; }
+.p-passos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--apagado); font-size: 14px; }
+.p-passos b { color: var(--texto); font-weight: 600; }
+.visor-pub code { font: 12.5px var(--f-mono); color: var(--texto); background: var(--tinta); border: 1px solid var(--linha); border-radius: 5px; padding: 1px 6px; overflow-wrap: anywhere; }
+.p-titulos { display: flex; flex-direction: column; gap: 6px; }
+.p-titulos:empty { display: none; }
+.p-titulos button { display: flex; gap: 10px; align-items: baseline; text-align: left; border: 1px solid var(--linha); background: var(--tinta); border-radius: var(--raio-p); padding: 8px 11px; font-size: 13.5px; line-height: 1.35; color: var(--apagado); transition: border-color .15s, color .15s; }
+.p-titulos button b { flex: none; font: 12px var(--f-titulo); color: var(--sumido); }
+.p-titulos button:hover { border-color: var(--linha-forte); color: var(--texto); }
+.p-titulos button[aria-pressed="true"] { border-color: var(--sol); color: var(--texto); }
+.p-titulos button[aria-pressed="true"] b { color: var(--legenda); }
+.p-capas { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.p-capa { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; border: 2px solid var(--linha); background: var(--mesa-2); cursor: pointer; transition: border-color .15s; }
+.p-capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.p-capa input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.p-capa:has(input:checked) { border-color: var(--legenda); }
+.p-capa:has(input:focus-visible) { outline: 2px solid var(--legenda); outline-offset: 2px; }
+.p-aviso { font-size: 13.5px; border-radius: var(--raio-p); padding: 9px 12px; overflow-wrap: anywhere; color: var(--texto); background: rgba(255, 225, 74, .07); border: 1px solid rgba(255, 225, 74, .28); }
+.p-aviso[data-tom="erro"] { color: var(--erro); background: rgba(255, 107, 107, .07); border-color: rgba(255, 107, 107, .35); }
+.envios { position: fixed; left: 20px; bottom: 20px; z-index: 40; display: flex; flex-direction: column; gap: 8px; width: min(340px, calc(100vw - 40px)); }
+.envio { background: var(--mesa-2); border: 1px solid var(--linha-forte); border-radius: 10px; padding: 11px 12px 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; box-shadow: 0 16px 40px -16px #000; animation: surgir .2s ease-out; }
+.envio-topo { display: flex; gap: 8px; align-items: flex-start; }
+.envio-topo strong { flex: 1; min-width: 0; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.envio .fechar { width: 24px; height: 24px; font-size: 15px; }
+.envio-barra { height: 4px; border-radius: 2px; background: var(--linha); overflow: hidden; }
+.envio-barra i { display: block; height: 100%; width: var(--p, 0%); background: var(--brasa); transition: width .4s; }
+.envio p { color: var(--apagado); font-size: 12.5px; overflow-wrap: anywhere; }
+.envio a { color: var(--texto); text-underline-offset: 3px; }
+.envio[data-estado="pronto"] { border-color: rgba(61, 220, 151, .45); }
+.envio[data-estado="erro"] { border-color: rgba(255, 107, 107, .5); }
+.envio[data-estado="erro"] p { color: var(--erro); }
+
+/* ---------- recados ---------- */
+.recados { position: fixed; right: 20px; bottom: 20px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+.recado { background: var(--mesa-2); border: 1px solid var(--linha-forte); border-left: 3px solid var(--legenda); border-radius: 10px; padding: 11px 16px; font-size: 14px; max-width: min(420px, calc(100vw - 40px)); box-shadow: 0 16px 40px -16px #000; animation: surgir .2s ease-out; overflow-wrap: anywhere; }
+.recado[data-tom="erro"] { border-left-color: var(--erro); }
+.recado[data-tom="ok"] { border-left-color: var(--ok); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-dentro">
+    <div class="marca"><span class="selo" aria-hidden="true"></span><span>CORTE<b>MAKER</b></span></div>
+    <nav class="rotas" aria-label="Seções">
+      <a href="#/criar" data-rota="criar"><span>Criar</span><small id="n-criar"></small></a>
+      <a href="#/lives" data-rota="lives"><span>Lives</span><small id="n-lives"></small></a>
+      <a href="#/cortes" data-rota="cortes"><span>Cortes</span><small id="n-cortes"></small></a>
+      <a href="#/compilacoes" data-rota="compilacoes"><span>Compilações</span><small id="n-comp"></small></a>
+    </nav>
+    <div class="sinais" id="sinais" aria-live="polite"></div>
+  </div>
+</header>
+
+<main id="palco">
+
+  <!-- #/criar e #/criar/live -->
+  <section class="pagina" data-pagina="criar" hidden>
+    <div class="pagina-topo">
+      <div><h1 id="t-criar">Novo vídeo para cortar</h1><p class="sub" id="sub-criar"></p></div>
+      <nav class="fatias modo" aria-label="O que você vai cortar">
+        <a href="#/criar" data-modo="gravado"><strong>Vídeo gravado</strong><small>link ou arquivo</small></a>
+        <a href="#/criar/live" data-modo="vivo"><strong>Live no ar</strong><small>corta enquanto acontece</small></a>
+      </nav>
+    </div>
+    <div class="criar">
+      <form class="painel" id="form" autocomplete="off">
+        <input type="checkbox" id="ao_vivo" name="ao_vivo" hidden>
+        <div class="cartao">
+          <h2 class="cartao-titulo"><i>1</i>O que cortar</h2>
+
+    <div class="campo">
+      <label class="rotulo" for="origem">Link ou arquivo</label>
+      <div class="entrada" id="entrada">
+        <textarea id="origem" name="origem" rows="2" spellcheck="false"
+          placeholder="Cole o link da live ou do vídeo (YouTube, Twitch, Kick…). Um por linha."></textarea>
+        <div class="entrada-pe">
+          <span class="dica" id="dica-envio">ou arraste um vídeo do computador para cá</span>
+          <button type="button" class="fantasma" id="escolher">Escolher arquivo</button>
+          <input type="file" id="arquivo" accept="video/*,.mkv,.ts,.flv" hidden>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="campo so-vivo">
+      <span class="rotulo" id="r-limiar">Exigência</span>
+      <div class="fatias" role="radiogroup" aria-labelledby="r-limiar">
+        <label><input type="radio" name="limiar" value="85"><strong>Só os melhores</strong><small>nota 85+</small></label>
+        <label><input type="radio" name="limiar" value="75" checked><strong>Equilibrado</strong><small>nota 75+</small></label>
+        <label><input type="radio" name="limiar" value="65"><strong>Mais cortes</strong><small>nota 65+</small></label>
+      </div>
+      <p class="dica">A cada 2 min e meio de live, o trecho novo é analisado. Os cortes aparecem de 3 a 5 minutos depois do momento. Dá para acompanhar várias lives ao mesmo tempo: cole um link por linha.</p>
+    </div>
+
+    <div class="par">
+      <div class="campo so-gravado">
+        <label class="rotulo" for="cortes">Cortes</label>
+        <div class="passos">
+          <button type="button" data-passo="-1" aria-label="Menos cortes">−</button>
+          <input type="number" id="cortes" name="cortes" min="1" max="30" value="5" inputmode="numeric">
+          <button type="button" data-passo="1" aria-label="Mais cortes">+</button>
+        </div>
+      </div>
+      <div class="campo">
+        <span class="rotulo" id="r-duracao">Duração de cada corte</span>
+        <div class="fatias" role="radiogroup" aria-labelledby="r-duracao">
+          <label><input type="radio" name="duracao" value="15-30"><strong>Rápido</strong><small>15–30 s</small></label>
+          <label><input type="radio" name="duracao" value="20-60" checked><strong>Padrão</strong><small>20–60 s</small></label>
+          <label><input type="radio" name="duracao" value="45-90"><strong>Longo</strong><small>45–90 s</small></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="campo">
+      <span class="rotulo" id="r-formato">Enquadramento vertical</span>
+      <div class="formatos" role="radiogroup" aria-labelledby="r-formato">
+        <label class="formato"><input type="radio" name="layout" value="blur" checked>
+          <span class="mini" data-f="blur" aria-hidden="true"><i></i><u></u></span>
+          <strong>Aproximado</strong><small>zoom no centro, fundo desfocado</small></label>
+        <label class="formato"><input type="radio" name="layout" value="cheio">
+          <span class="mini" data-f="cheio" aria-hidden="true"><i></i><u></u></span>
+          <strong>Tela cheia</strong><small>corta as laterais</small></label>
+        <label class="formato"><input type="radio" name="layout" value="inteiro">
+          <span class="mini" data-f="inteiro" aria-hidden="true"><i></i><u></u></span>
+          <strong>Inteiro</strong><small>mostra o vídeo todo</small></label>
+        <label class="formato"><input type="radio" name="layout" value="preto">
+          <span class="mini" data-f="preto" aria-hidden="true"><i></i><u></u></span>
+          <strong>Inteiro sem blur</strong><small>vídeo todo no meio, fundo preto</small></label>
+        <label class="formato"><input type="radio" name="layout" value="camera">
+          <span class="mini" data-f="camera" aria-hidden="true"><i></i><b></b><u></u></span>
+          <strong>Câmera em cima</strong><small>streamer em cima, jogo embaixo</small></label>
+      </div>
+      <div class="cam-painel" id="cam-painel" hidden>
+        <input type="hidden" name="camera" id="camera">
+        <span id="cam-resumo"></span>
+        <button type="button" class="fantasma" id="cam-marcar">Marcar a câmera</button>
+      </div>
+    </div>
+
+    <div class="campo">
+      <label class="rotulo" for="contexto">O que procurar <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--sumido)">(opcional)</span></label>
+      <textarea class="texto" id="contexto" name="contexto" rows="2" maxlength="500"
+        placeholder="Ex.: gameplay de GTA 6, foco em humor, fails e reações"></textarea>
+    </div>
+
+
+          <button class="gerar" id="gerar" type="submit">Gerar cortes</button>
+        </div>
+        <div class="cartao">
+          <h2 class="cartao-titulo"><i>2</i>Acabamento</h2>
+          <div class="mais-corpo">
+        <div class="trio">
+          <div class="campo so-gravado"><label class="rotulo" for="inicio">Do ponto</label>
+            <input class="texto" id="inicio" name="inicio" placeholder="0:00:00" inputmode="numeric"></div>
+          <div class="campo so-gravado"><label class="rotulo" for="fim">Até</label>
+            <input class="texto" id="fim" name="fim" placeholder="fim" inputmode="numeric"></div>
+          <div class="campo"><label class="rotulo" for="idioma">Idioma</label>
+            <select class="texto" id="idioma" name="idioma" style="font-family:var(--f-texto)">
+              <option value="auto">Detectar</option><option value="pt">Português</option>
+              <option value="en">Inglês</option><option value="es">Espanhol</option></select></div>
+        </div>
+        <p class="dica so-gravado" style="margin-top:-8px">O trecho vale para links: só essa parte é baixada e analisada.</p>
+        <div class="campo"><label class="rotulo" for="marca">Marca do canal</label>
+          <input class="texto" id="marca" name="marca" value="{{CORTES_MARCA}}" maxlength="40" placeholder="vazio: sem marca"></div>
+        <p class="dica" style="margin-top:-8px">Aparece pequena no topo de cada corte, o vídeo inteiro.</p>
+        <div class="campo"><label class="rotulo" for="comentario">Comentário narrado</label>
+          <select class="texto" id="comentario" name="comentario" style="font-family:var(--f-texto)">
+            <option value="pt">Em português</option><option value="en">Em inglês</option>
+            <option value="nao">Sem comentário</option></select></div>
+        <p class="dica" style="margin-top:-8px">A IA escreve um comentário para cada corte (título e descrição saem no mesmo idioma). A voz só é gravada quando você abre o corte e clica em <b>Adicionar narração</b>, para gastar a ElevenLabs só nos que vai publicar. Depende da escolha por IA.</p>
+        <div class="campo"><label class="rotulo" for="voz">Voz do narrador</label>
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <select class="texto" id="voz" name="voz" style="font-family:var(--f-texto);flex:1;min-width:0"></select>
+            <button type="button" class="fantasma" id="ouvir-voz" style="white-space:nowrap">▶ Ouvir</button>
+          </div></div>
+        <p class="dica" style="margin-top:-8px">O botão toca uma frase de exemplo com a voz escolhida.</p>
+        <label class="chave"><span><strong>Narrador também no início</strong><small>o vídeo começa parado, com o contexto do corte</small></span>
+          <input type="checkbox" id="abertura" name="abertura"></label>
+        <label class="chave"><span><strong>Legenda em dois idiomas</strong><small>embaixo da legenda, a tradução: inglês e português</small></span>
+          <input type="checkbox" id="traducao" name="traducao" checked></label>
+        <label class="chave"><span><strong>Legenda no vídeo</strong><small>palavra a palavra, com destaque amarelo</small></span>
+          <input type="checkbox" id="legendas" name="legendas" checked></label>
+        <label class="chave"><span><strong>Escolha por IA</strong><small>desligada, usa só os picos de volume</small></span>
+          <input type="checkbox" id="usar_ia" name="usar_ia" checked></label>
+        <label class="chave so-vivo"><span><strong>Triagem rápida</strong><small>gasta cerca de metade da IA, mas pode deixar passar algum momento bom</small></span>
+          <input type="checkbox" id="triagem" name="triagem"></label>
+          </div>
+        </div>
+      </form>
+
+      <section class="producao" id="sec-fila" aria-labelledby="t-fila">
+        <div class="secao-topo"><h2 id="t-fila">Em produção</h2><span class="conta" id="conta-fila"></span></div>
+        <div class="lista-trab" id="fila"></div>
+        <p class="vazio-leve" id="fila-vazia">Nada na fila. Os vídeos gravados são cortados um por vez e aparecem aqui enquanto são processados.</p>
+      </section>
+    </div>
+  </section>
+
+  <!-- #/lives -->
+  <section class="pagina" data-pagina="lives" hidden>
+    <div class="pagina-topo">
+      <div><h1>Lives monitoradas</h1><p class="sub" id="resumo-lives"></p></div>
+    </div>
+    <div class="adicionar">
+      <form class="nova-live" id="nova-live" autocomplete="off">
+        <label class="so-leitor" for="link-live">Link da live</label>
+        <input class="texto" id="link-live" spellcheck="false" placeholder="Cole o link de uma live que está no ar (Twitch, YouTube, Kick…)">
+        <button class="cheio" type="submit" id="adicionar-live">Adicionar live</button>
+      </form>
+      <p class="dica">Entra com <b id="resumo-opcoes"></b>. <a href="#/criar/live">Mudar as opções</a>. O que procurar, a nota mínima e o enquadramento também mudam depois, em cada live.</p>
+    </div>
+    <div class="lista-trab lives-grade" id="lives"></div>
+  </section>
+
+  <!-- #/cortes, #/cortes/<pasta> e #/cortes/<pasta>/<número> -->
+  <section class="pagina" data-pagina="cortes" hidden>
+    <div class="pagina-topo">
+      <div><h1>Cortes prontos</h1><p class="sub" id="conta-bib">Os vídeos verticais, do melhor para o pior de cada sessão, com título e legenda para copiar.</p></div>
+      <div class="pagina-acoes">
+        <input class="texto busca" id="busca" type="search" placeholder="Buscar por título ou canal" aria-label="Buscar cortes">
+        <div class="filtros" role="group" aria-label="Mostrar cortes">
+          <button type="button" data-filtro="tudo" aria-pressed="true">Tudo</button>
+          <button type="button" data-filtro="videos" aria-pressed="false">De vídeos</button>
+          <button type="button" data-filtro="lives" aria-pressed="false">De lives</button>
+        </div>
+      </div>
+    </div>
+    <div class="sessoes" id="biblioteca">
+      <div class="vazio">
+        <div class="vazio-quadros" aria-hidden="true"><i></i><i></i><i></i></div>
+        <h3>Nenhum corte ainda</h3>
+        <p>Na aba Criar, cole o link de uma live ou de um vídeo e clique em Gerar cortes. Os vídeos verticais aparecem aqui, do melhor para o pior, com título e legenda para copiar.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- #/compilacoes e #/compilacoes/<pasta> -->
+  <section class="pagina" data-pagina="compilacoes" hidden>
+    <div class="pagina-topo">
+      <div><h1>Compilações</h1><p class="sub">Junta cortes que já estão prontos num vídeo horizontal mais longo, com um tema só, para publicar como vídeo normal do YouTube.</p></div>
+    </div>
+    <div class="blocos" id="sec-comp" hidden>
+      <section id="sec-fila-comp" hidden aria-labelledby="t-fila-comp">
+        <div class="secao-topo"><h2 id="t-fila-comp">Montando agora</h2></div>
+        <div class="lista-trab" id="fila-comp"></div>
+      </section>
+      <section id="sec-prontas" hidden aria-labelledby="t-prontas">
+        <div class="secao-topo"><h2 id="t-prontas">Vídeos prontos</h2><span class="conta" id="conta-comp"></span></div>
+        <div class="comps" id="comps"></div>
+      </section>
+      <section aria-labelledby="t-temas">
+        <div class="secao-topo"><h2 id="t-temas">Temas propostos</h2><span class="conta" id="conta-temas"></span></div>
+        <div class="blocos" style="gap:14px">
+          <div class="adicionar">
+            <form class="nova-live" id="pedir-temas" autocomplete="off">
+              <label class="so-leitor" for="pedido-tema">Tema que você quer</label>
+              <input class="texto" id="pedido-tema" maxlength="300" style="font-family:var(--f-texto);font-size:14.5px"
+                placeholder="Tema que você quer (opcional). Ex.: bugs e bizarrices do mapa">
+              <button class="cheio" type="submit" id="propor-temas">Propor temas</button>
+            </form>
+            <p class="dica">Propor temas gasta uma chamada à IA; gerar o vídeo de um tema não gasta nada.</p>
+          </div>
+          <p class="nota-aviso" id="aviso-temas" hidden></p>
+          <div class="temas" id="temas"></div>
+        </div>
+      </section>
+    </div>
+    <div class="vazio" id="comp-indisponivel" hidden>
+      <h3>Feche e abra o programa</h3>
+      <p>As compilações chegaram numa versão mais nova do que a que está aberta. Feche a janela do corte-maker e abra de novo.</p>
+    </div>
+  </section>
+
+</main>
+
+<dialog class="visor" id="visor" aria-labelledby="v-titulo">
+  <div class="visor-grade">
+    <div class="visor-video"><video id="v-video" controls playsinline></video></div>
+    <div class="visor-info">
+      <div class="visor-topo"><span id="v-ordem"></span><button class="fechar" id="v-fechar" aria-label="Fechar">✕</button></div>
+      <div class="placar"><b id="v-nota"></b><span id="v-origem"></span></div>
+      <div class="bloco">
+        <div class="bloco-topo"><span class="rotulo">Título</span><button class="fantasma" data-copiar="titulo">Copiar</button></div>
+        <h2 id="v-titulo"></h2>
+      </div>
+      <div class="bloco">
+        <div class="bloco-topo"><span class="rotulo">Legenda do post</span><button class="fantasma" data-copiar="legenda">Copiar</button></div>
+        <pre id="v-legenda"></pre>
+      </div>
+      <div class="bloco" id="v-bloco-motivo"><span class="rotulo">Por que funciona</span><p id="v-motivo"></p></div>
+      <div class="bloco v-editar" id="v-editar">
+        <div class="bloco-topo"><span class="rotulo">Editar este corte</span></div>
+        <p class="dica" id="v-sem-edicao" hidden>Este corte foi feito antes da edição existir e não guardou o vídeo original. Só os cortes novos podem trocar de enquadramento ou ganhar narração.</p>
+        <div id="v-controles">
+          <div class="v-linha">
+            <select class="texto" id="v-layout" aria-label="Enquadramento" style="font-family:var(--f-texto)">
+              <option value="blur">Aproximado · zoom no centro</option>
+              <option value="cheio">Tela cheia · corta as laterais</option>
+              <option value="inteiro">Inteiro · fundo desfocado</option>
+              <option value="preto">Inteiro sem blur · fundo preto</option>
+              <option value="camera">Câmera em cima · jogo embaixo</option>
+            </select>
+            <button class="fantasma" id="v-cam" hidden>Marcar a câmera</button>
+            <button class="fantasma" id="v-aplicar">Trocar enquadramento</button>
+          </div>
+          <div id="v-narra">
+            <p class="dica" id="v-narra-estado"></p>
+            <textarea class="texto" id="v-abertura" rows="2" maxlength="400" aria-label="O que o narrador diz antes do corte" hidden></textarea>
+            <textarea class="texto" id="v-fecho" rows="3" maxlength="400" aria-label="O que o narrador diz depois do corte"></textarea>
+            <div class="v-linha"><button class="cheio" id="v-narrar">Adicionar narração</button><button class="fantasma" id="v-tirar" hidden>Tirar narração</button></div>
+          </div>
+          <div class="v-linha v-processando" id="v-processando" hidden>
+            <span><i class="giro" aria-hidden="true"></i>Refazendo o corte… o vídeo antigo só é trocado no fim.</span>
+            <button class="fantasma" id="v-cancelar">Cancelar</button>
+          </div>
+          <p class="dica" id="v-sem-roteiro" hidden>A IA não escreveu comentário para este corte (o comentário narrado estava desligado).</p>
+        </div>
+      </div>
+      <dl class="ficha">
+        <div><dt class="rotulo">Trecho original</dt><dd id="v-trecho"></dd></div>
+        <div><dt class="rotulo">Duração</dt><dd id="v-dur"></dd></div>
+      </dl>
+      <div class="visor-pe">
+        <a class="cheio" id="v-baixar" download>Baixar vídeo</a>
+        <button class="fantasma" id="v-pasta">Abrir pasta</button>
+        <button class="fantasma" id="v-publicar" data-publicar="corte">Publicar no YouTube</button>
+        <button class="fantasma" id="v-tiktok">Enviar pro TikTok</button>
+        <a class="fantasma" id="v-youtube" target="_blank" rel="noopener noreferrer" hidden>Ver no YouTube ↗</a>
+        <span class="espaco"></span>
+        <button class="fantasma seta" id="v-ant" aria-label="Corte anterior">←</button>
+        <button class="fantasma seta" id="v-prox" aria-label="Próximo corte">→</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="visor visor-cam" id="marcador" aria-labelledby="m-cab">
+  <div class="visor-info">
+    <div class="visor-topo"><span id="m-cab">ONDE FICA A CÂMERA</span><button class="fechar" id="m-fechar" aria-label="Fechar">✕</button></div>
+    <p class="m-dica">Clique num canto da câmera do streamer, segure e <b>arraste até o canto oposto</b>: aparece um quadro laranja em volta dela. Depois clique em <b>Usar esta posição</b>.</p>
+    <p class="dica" style="margin:0">A câmera vai para o alto do corte, e o jogo fica embaixo, recortado no centro.</p>
+    <div class="m-quadro" id="m-quadro"><img id="m-img" alt="Um quadro do vídeo" hidden><div id="m-caixa" hidden></div><p id="m-espera"></p></div>
+    <div class="visor-pe"><button class="cheio" id="m-ok" disabled>Usar esta posição</button><button class="fantasma" id="m-cancelar">Cancelar</button></div>
+  </div>
+</dialog>
+
+<dialog class="visor visor-pub" id="tiktok" aria-labelledby="t-cab">
+  <div class="visor-info">
+    <div class="visor-topo"><span id="t-cab">ENVIAR PRO TIKTOK</span><button class="fechar" id="t-fechar" aria-label="Fechar">✕</button></div>
+    <p class="p-aviso" id="t-aviso" hidden></p>
+
+    <div class="p-etapa" id="t-config" hidden>
+      <h2>Ligar o TikTok (uma vez só)</h2>
+      <p>O TikTok só aceita envio por um app registrado em nome do dono da conta. É de graça e leva uns 10 minutos:</p>
+      <ol class="t-passos">
+        <li>Entre em <a href="https://developers.tiktok.com/apps" target="_blank" rel="noopener noreferrer">developers.tiktok.com/apps ↗</a> com a sua conta do TikTok e crie um app (pode ser do tipo individual). {{CORTES_TIKTOK_PAGINAS}}</li>
+        <li>Em <b>Products</b>, adicione <b>Login Kit</b> e <b>Content Posting API</b>.</li>
+        <li>No Login Kit, escolha a plataforma <b>Desktop</b> e cadastre o endereço de retorno <code>http://127.0.0.1:*/tiktok/retorno/</code></li>
+        <li>Em <b>Scopes</b>, marque <code>user.info.basic</code> e <code>video.upload</code> (e <code>video.publish</code> se for usar o envio direto).</li>
+        <li>Enquanto o app está em teste (Sandbox), adicione a sua conta em <b>Target users</b>. Para usar sem isso, envie o app para revisão do TikTok.</li>
+        <li>Copie a <b>Client key</b> e o <b>Client secret</b> do app e cole aqui:</li>
+      </ol>
+      <form id="t-chaves" class="t-chaves">
+        <input class="texto" name="client_key" placeholder="Client key" autocomplete="off" spellcheck="false">
+        <input class="texto" name="client_secret" type="password" placeholder="Client secret" autocomplete="off">
+        <select class="texto" name="modo" style="font-family:var(--f-texto)">
+          <option value="rascunho">Rascunho: o vídeo chega no app do TikTok e você termina a postagem lá (recomendado)</option>
+          <option value="direto">Direto: posta na hora, com a legenda (sem a auditoria do TikTok, só com a conta inteira privada)</option>
+        </select>
+        <button class="cheio" type="submit">Salvar</button>
+      </form>
+    </div>
+
+    <div class="p-etapa" id="t-entrar" hidden>
+      <h2>Conectar a sua conta</h2>
+      <p>O navegador abre o login do TikTok. Autorize o app e volte para cá.</p>
+      <div class="v-linha"><button class="cheio" id="t-conectar">Conectar o TikTok</button><button class="fantasma" id="t-trocar">Trocar as chaves</button></div>
+    </div>
+
+    <div class="p-etapa" id="t-form" hidden>
+      <p id="t-conta"></p>
+      <label class="rotulo" for="t-legenda">Legenda</label>
+      <textarea class="texto" id="t-legenda" rows="5" maxlength="2200"></textarea>
+      <p class="dica" id="t-explica"></p>
+      <div id="t-priv-campo" hidden>
+        <label class="rotulo" for="t-priv">Quem pode ver</label>
+        <select class="texto" id="t-priv" style="font-family:var(--f-texto)"></select>
+      </div>
+      <div id="t-progresso" hidden><div class="envio-barra"><i id="t-barra"></i></div><p class="dica" id="t-situacao"></p></div>
+      <div class="v-linha">
+        <button class="cheio" id="t-enviar">Enviar</button>
+        <button class="fantasma" id="t-copiar">Copiar legenda</button>
+        <span class="espaco" style="flex:1"></span>
+        <button class="fantasma" id="t-config-de-novo">Chaves e modo</button>
+        <button class="fantasma" id="t-sair">Desconectar</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="visor visor-largo" id="visor-comp" aria-labelledby="c-titulo">
+  <div class="largo-video"><video id="c-video" controls playsinline></video></div>
+  <div class="visor-info">
+    <div class="visor-topo"><span id="c-ordem"></span><button class="fechar" id="c-fechar" aria-label="Fechar">✕</button></div>
+    <div class="bloco">
+      <div class="bloco-topo"><span class="rotulo">Título</span><button class="fantasma" data-copiar="titulo">Copiar</button></div>
+      <h2 id="c-titulo"></h2>
+    </div>
+    <div class="bloco" id="c-ab" hidden>
+      <div class="bloco-topo"><span class="rotulo">Outros títulos para o teste A/B</span></div>
+      <div id="c-ab-lista"></div>
+    </div>
+    <div class="bloco">
+      <div class="bloco-topo"><span class="rotulo">Descrição, com capítulos e créditos</span><button class="fantasma" data-copiar="descricao">Copiar</button></div>
+      <pre id="c-descricao"></pre>
+    </div>
+    <div class="visor-pe">
+      <a class="cheio" id="c-baixar" download>Baixar vídeo</a>
+      <a class="fantasma" id="c-miniatura" download>Baixar miniatura</a>
+      <button class="fantasma" id="c-pasta">Abrir pasta</button>
+      <button class="fantasma" id="c-publicar" data-publicar="compilacao">Publicar no YouTube</button>
+      <a class="fantasma" id="c-youtube" target="_blank" rel="noopener noreferrer" hidden>Ver no YouTube ↗</a>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="visor visor-pub" id="publicar" aria-labelledby="p-cab">
+  <div class="visor-info">
+    <div class="visor-topo"><span id="p-cab">PUBLICAR NO YOUTUBE</span><button class="fechar" id="p-fechar" aria-label="Fechar">✕</button></div>
+    <p class="p-aviso" id="p-aviso" hidden></p>
+
+    <div class="p-etapa" id="p-antigo" hidden>
+      <h2>Feche e abra o programa</h2>
+      <p>Publicar no YouTube chegou numa versão mais nova do que a que está aberta. Feche a janela do corte-maker e abra de novo.</p>
+    </div>
+
+    <div class="p-etapa" id="p-falta" hidden>
+      <h2>Falta a credencial do Google</h2>
+      <p>É uma vez só, e leva uns 15 minutos. O passo a passo com os nomes de cada tela está no README, em "Publicar no YouTube".</p>
+      <ol class="p-passos">
+        <li>Em <b>console.cloud.google.com</b>, crie um projeto e ative a <b>YouTube Data API v3</b>.</li>
+        <li>Em <b>Google Auth Platform</b>, crie o <b>Branding</b> (nome do app, seu e-mail, público <b>Externo</b>, sem logotipo). Em <b>Público-alvo</b>, adicione o e-mail da conta do canal em <b>Usuários de teste</b>. O app fica em teste: a cada 7 dias o Google pede para conectar de novo.</li>
+        <li>Em <b>Clientes</b>, crie um cliente do tipo <b>App para computador</b> (Desktop app) e baixe o arquivo JSON.</li>
+        <li>Salve o arquivo, sem mudar o nome, em <code id="p-onde"></code></li>
+      </ol>
+      <p class="dica" id="p-problema"></p>
+      <div class="visor-pe"><button type="button" class="cheio" id="p-abrir-pasta">Abrir a pasta</button></div>
+    </div>
+
+    <div class="p-etapa" id="p-entrar" hidden>
+      <h2>Conecte o seu canal</h2>
+      <p>O Google abre numa aba nova e pergunta se o corte-maker pode enviar vídeos para o seu canal. A autorização fica guardada neste computador; a sua senha nunca passa pelo programa.</p>
+      <div class="visor-pe"><button type="button" class="gerar" id="p-conectar">Conectar ao YouTube</button></div>
+    </div>
+
+    <form id="p-form" hidden autocomplete="off">
+      <div class="campo">
+        <label class="rotulo" for="p-titulo">Título</label>
+        <input class="texto" id="p-titulo" maxlength="100" required>
+        <div class="p-titulos" id="p-titulos"></div>
+      </div>
+      <div class="campo" id="p-bloco-capas">
+        <span class="rotulo">Miniatura</span>
+        <div class="p-capas" id="p-capas"></div>
+      </div>
+      <div class="campo">
+        <span class="rotulo" id="r-quando">Quando fica público</span>
+        <div class="fatias" role="radiogroup" aria-labelledby="r-quando">
+          <label><input type="radio" name="privacidade" value="privado" checked><strong>Privado</strong><small>você libera depois</small></label>
+          <label><input type="radio" name="privacidade" value="agendado"><strong>Agendar</strong><small>dia e hora</small></label>
+          <label><input type="radio" name="privacidade" value="publico"><strong>Público</strong><small>na hora</small></label>
+        </div>
+        <input class="texto" type="datetime-local" id="p-quando" aria-label="Dia e hora em que o vídeo fica público" hidden>
+        <p class="dica" id="p-resumo"></p>
+      </div>
+      <p class="dica" id="p-canal"></p>
+      <div class="visor-pe">
+        <button class="gerar" type="submit" id="p-enviar">Enviar para o YouTube</button>
+        <span class="espaco"></span>
+        <button type="button" class="fantasma" id="p-sair">Desconectar o canal</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<div class="envios" id="envios" aria-live="polite"></div>
+<div class="recados" id="recados" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ETAPAS = ["Download", "Áudio", "Transcrição", "Momentos", "Edição"];
+const ETAPAS_COMPILACAO = ["Material", "Momentos", "Cartelas", "Montagem", "Miniatura"];
+// `versao` muda quando o corte é refeito, para o navegador não mostrar o vídeo antigo guardado
+const midia = (pasta, arq, versao) => `/midia/${encodeURIComponent(pasta)}/${encodeURIComponent(arq)}${versao ? `?v=${Math.round(versao)}` : ""}`;
+
+function relogio(t, comHoras) {
+  t = Math.max(0, Math.round(t));
+  const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = String(t % 60).padStart(2, "0");
+  return h || comHoras ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
+
+async function api(caminho, opcoes) {
+  const r = await fetch(caminho, opcoes);
+  const corpo = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(corpo.detail || `Erro ${r.status}`);
+  return corpo;
+}
+
+function recado(texto, tom) {
+  const el = document.createElement("div");
+  el.className = "recado";
+  if (tom) el.dataset.tom = tom;
+  el.textContent = texto;
+  $("#recados").append(el);
+  setTimeout(() => el.remove(), tom === "erro" ? 7000 : 3800);
+}
+
+/* ---------- formulário ---------- */
+const form = $("#form");
+const GUARDADOS = ["cortes", "duracao", "layout", "camera", "contexto", "idioma", "marca", "comentario", "voz", "abertura", "traducao", "legendas", "usar_ia", "limiar", "triagem"];
+const chaveVivo = $("#ao_vivo");
+function trocarModo() {  // o modo vem do endereço: #/criar é vídeo gravado, #/criar/live é live no ar
+  const vivo = chaveVivo.checked;
+  form.classList.toggle("vivo", vivo);
+  $("#gerar").textContent = vivo ? "Monitorar a live" : "Gerar cortes";
+  $("#t-criar").textContent = vivo ? "Nova live para monitorar" : "Novo vídeo para cortar";
+  $("#sub-criar").textContent = vivo
+    ? "Cole o link de uma live que está no ar. O programa acompanha a transmissão e solta cada corte de 3 a 5 minutos depois do momento."
+    : "Cole o link de um vídeo ou de uma live que já acabou, ou arraste um arquivo. O programa acha os melhores momentos e entrega os cortes verticais prontos.";
+  for (const a of document.querySelectorAll("[data-modo]")) a.setAttribute("aria-current", String((a.dataset.modo === "vivo") === vivo));
+}
+
+/* ---------- rotas: cada aba é um endereço, e pasta e corte abertos também ----------
+   #/criar · #/criar/live · #/lives · #/cortes · #/cortes/<pasta> · #/cortes/<pasta>/<número> · #/compilacoes · #/compilacoes/<pasta>
+   Fica tudo depois do #, então o servidor não precisa conhecer endereço nenhum e o voltar do navegador funciona. */
+const PAGINAS = { criar: "Criar", lives: "Lives", cortes: "Cortes", compilacoes: "Compilações" };
+const caminho = (...partes) => partes.map(encodeURIComponent).join("/");
+let rota = null, primeiraCarga = true, filtroBib = "tudo", busca = "";
+function lerRota() {
+  const partes = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean)
+    .map(p => { try { return decodeURIComponent(p); } catch { return p; } });
+  return partes[0] in PAGINAS ? { pagina: partes[0], resto: partes.slice(1) } : null;
+}
+function ir(destino, substituir) {
+  const h = "#/" + destino;
+  if (location.hash === h) { rota = null; return aplicarRota(); }  // já está lá: refaz (rola de novo até a pasta pedida)
+  if (substituir) { history.replaceState(null, "", h); aplicarRota(); }
+  else location.hash = h;  // o hashchange chama aplicarRota
+}
+function paginaInicial() {  // sem endereço: onde há algo acontecendo, senão a última aba usada
+  if (estado.trabalhos.some(t => t.ao_vivo && t.estado === "rodando")) return "lives";
+  let salva = "";
+  try { salva = localStorage.getItem("corte-maker-pagina") || ""; } catch { /* sem armazenamento */ }
+  return salva in PAGINAS ? salva : estado.biblioteca.length ? "cortes" : "criar";
+}
+function mostrarSessao(pasta) {
+  filtroBib = "tudo"; busca = ""; $("#busca").value = "";
+  desenharBiblioteca();
+  requestAnimationFrame(() => document.querySelector(`.sessao[data-pasta="${CSS.escape(pasta)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+function aplicarRota() {
+  const nova = lerRota();
+  if (!nova) return primeiraCarga ? undefined : ir(paginaInicial(), true);
+  const antes = rota, mudouPagina = !antes || antes.pagina !== nova.pagina;
+  rota = nova;
+  for (const p of document.querySelectorAll(".pagina")) p.hidden = p.dataset.pagina !== nova.pagina;
+  for (const a of document.querySelectorAll("[data-rota]")) a.dataset.rota === nova.pagina ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
+  document.title = `${PAGINAS[nova.pagina]} · Corte Maker`;
+  try { localStorage.setItem("corte-maker-pagina", nova.pagina); } catch { /* segue sem lembrar */ }
+  if (mudouPagina) scrollTo(0, 0);
+  if (nova.pagina === "criar") { chaveVivo.checked = nova.resto[0] === "live"; trocarModo(); }
+
+  const [pasta, numero] = nova.pagina === "cortes" ? nova.resto : [];
+  const si = pasta ? estado.biblioteca.findIndex(s => s.pasta === pasta) : -1, ci = Number(numero) - 1;
+  if (numero && si >= 0 && estado.biblioteca[si].cortes[ci]) {
+    if (!(visor.open && aberto && aberto.si === si && aberto.ci === ci)) abrirVisor(si, ci);
+  } else {
+    if (visor.open) visor.close();
+    if (pasta && !primeiraCarga && (si < 0 || numero)) return ir("cortes", true);  // pasta ou corte que não existe mais
+    if (si >= 0 && (mudouPagina || antes.resto[0] !== pasta)) mostrarSessao(pasta);
+  }
+
+  const pastaComp = nova.pagina === "compilacoes" ? nova.resto[0] : "";
+  const i = pastaComp ? (estado.compilacoes?.prontas || []).findIndex(c => c.pasta === pastaComp) : -1;
+  if (i >= 0) { if (!(visorComp.open && compAberta?.pasta === pastaComp)) abrirCompilacao(i); }
+  else {
+    if (visorComp.open) visorComp.close();
+    if (pastaComp && !primeiraCarga) return ir("compilacoes", true);
+  }
+}
+addEventListener("hashchange", aplicarRota);
+function verCorte(si, ci, substituir) {
+  const s = estado.biblioteca[si];
+  if (s?.cortes[ci]) ir(caminho("cortes", s.pasta, String(ci + 1)), substituir);
+}
+$("#busca").addEventListener("input", e => { busca = e.target.value.trim().toLowerCase(); desenharBiblioteca(); });
+
+function lembrar() {
+  try {
+    const d = {};
+    for (const n of GUARDADOS) {
+      const el = form.elements[n];
+      d[n] = el.type === "checkbox" ? el.checked : el.value;
+    }
+    localStorage.setItem("corte-maker", JSON.stringify(d));
+  } catch { /* sem armazenamento: segue sem lembrar */ }
+}
+function relembrar() {
+  try {
+    const d = JSON.parse(localStorage.getItem("corte-maker") || "{}");
+    for (const n of GUARDADOS) {
+      if (!(n in d)) continue;
+      const el = form.elements[n];
+      if (el.type === "checkbox") el.checked = !!d[n]; else el.value = d[n];
+    }
+  } catch { /* preferências corrompidas: usa os padrões */ }
+}
+relembrar();
+/* a página Lives mostra com que opções uma live nova entra, já que o formulário fica noutra aba */
+function resumoOpcoes() {
+  const quadro = { blur: "enquadramento aproximado", cheio: "tela cheia", inteiro: "vídeo inteiro", preto: "vídeo inteiro sem blur",
+    camera: "câmera em cima" }[form.elements.layout.value];
+  const fala = $("#comentario").value === "nao" ? "sem narrador" : `narrador em ${$("#comentario").value === "en" ? "inglês" : "português"}`;
+  $("#resumo-opcoes").textContent = `nota ${form.elements.limiar.value}+, cortes de ${form.elements.duracao.value.replace("-", " a ")} s, ${quadro}, ${fala}`;
+}
+resumoOpcoes();
+form.addEventListener("change", () => { lembrar(); resumoOpcoes(); });
+
+/* ---------- voz do narrador ---------- */
+const seletorVoz = $("#voz"), botaoVoz = $("#ouvir-voz");
+let tocando = null;
+function pararAmostra() {
+  if (tocando) { tocando.pause(); tocando = null; }
+  botaoVoz.textContent = "▶ Ouvir";
+}
+async function carregarVozes() {
+  try {
+    const r = await api("/api/vozes");
+    seletorVoz.replaceChildren(...r.vozes.map(v => {
+      const o = new Option(`${v.nome} · ${v.jeito}${v.usavel ? "" : " (sem chave)"}`, v.id);
+      o.disabled = !v.usavel;
+      return o;
+    }));
+    let salva = "";
+    try { salva = JSON.parse(localStorage.getItem("corte-maker") || "{}").voz || ""; } catch { /* usa a padrão */ }
+    seletorVoz.value = r.vozes.some(v => v.id === salva && v.usavel) ? salva : r.padrao;
+  } catch { /* sem a lista, o campo fica vazio e o servidor usa a voz padrão */ }
+}
+carregarVozes();
+seletorVoz.addEventListener("change", pararAmostra);
+botaoVoz.addEventListener("click", () => {
+  if (tocando) return pararAmostra();
+  if (!seletorVoz.value) return;
+  const audio = new Audio(`/api/vozes/${encodeURIComponent(seletorVoz.value)}/amostra`);
+  tocando = audio;
+  botaoVoz.textContent = "■ Parar";
+  audio.addEventListener("ended", () => { if (tocando === audio) pararAmostra(); });
+  audio.addEventListener("error", () => {
+    if (tocando !== audio) return;
+    pararAmostra();
+    recado("Não foi possível tocar a amostra desta voz.", "erro");
+  });
+  audio.play().catch(() => {});
+});
+
+form.addEventListener("click", e => {
+  const b = e.target.closest("[data-passo]");
+  if (!b) return;
+  const campo = $("#cortes");
+  campo.value = Math.min(30, Math.max(1, (parseInt(campo.value, 10) || 5) + Number(b.dataset.passo)));
+  lembrar();
+});
+
+const origem = $("#origem"), entrada = $("#entrada"), dicaEnvio = $("#dica-envio");
+const DICA_PADRAO = dicaEnvio.textContent;
+
+function enviar(arquivo) {
+  return new Promise((ok, falha) => {
+    const x = new XMLHttpRequest();
+    x.open("PUT", "/api/envio?nome=" + encodeURIComponent(arquivo.name));
+    x.upload.onprogress = e => { if (e.lengthComputable) dicaEnvio.textContent = `Copiando ${arquivo.name}: ${Math.round(100 * e.loaded / e.total)}%`; };
+    x.onload = () => x.status === 200 ? ok(JSON.parse(x.responseText).caminho) : falha(new Error("Não foi possível receber o arquivo."));
+    x.onerror = () => falha(new Error("Não foi possível receber o arquivo."));
+    x.send(arquivo);
+  });
+}
+async function receber(arquivos) {
+  for (const a of arquivos) {
+    try {
+      const caminho = await enviar(a);
+      origem.value = (origem.value.trim() ? origem.value.trim() + "\n" : "") + caminho;
+      recado(`${a.name} pronto para cortar.`, "ok");
+    } catch (erro) { recado(erro.message, "erro"); }
+  }
+  dicaEnvio.textContent = DICA_PADRAO;
+}
+$("#escolher").addEventListener("click", () => $("#arquivo").click());
+$("#arquivo").addEventListener("change", e => { receber([...e.target.files]); e.target.value = ""; });
+for (const tipo of ["dragenter", "dragover"]) entrada.addEventListener(tipo, e => { e.preventDefault(); entrada.classList.add("solte"); });
+for (const tipo of ["dragleave", "drop"]) entrada.addEventListener(tipo, e => { e.preventDefault(); entrada.classList.remove("solte"); });
+entrada.addEventListener("drop", e => {
+  if (e.dataTransfer.files.length) return receber([...e.dataTransfer.files]);
+  const texto = e.dataTransfer.getData("text");
+  if (texto) origem.value = (origem.value.trim() ? origem.value.trim() + "\n" : "") + texto.trim();
+});
+
+/* ---------- câmera em cima: marcar onde fica a câmera num quadro do vídeo ---------- */
+const marcador = $("#marcador"), mQuadro = $("#m-quadro"), mImg = $("#m-img"), mCaixa = $("#m-caixa"), mOk = $("#m-ok"), mEspera = $("#m-espera");
+let mValor = "", mFim = null, mInicio = null;
+function desenharCaixa() {
+  const v = mValor.split(",").map(Number);
+  const valido = v.length === 4 && v.every(n => Number.isFinite(n)) && v[2] >= 0.03 && v[3] >= 0.03;
+  mCaixa.hidden = !(v.length === 4 && v.every(n => Number.isFinite(n))) || mImg.hidden;
+  if (!mCaixa.hidden) Object.assign(mCaixa.style, { left: `${v[0] * 100}%`, top: `${v[1] * 100}%`, width: `${v[2] * 100}%`, height: `${v[3] * 100}%` });
+  mOk.disabled = !valido || mImg.hidden;
+}
+/* abre a janela com a imagem que `buscar` traz; devolve "x,y,largura,altura" (frações do quadro) ou null */
+function marcarCamera(buscar, atual) {
+  return new Promise(resolve => {
+    mFim = resolve; mValor = atual || ""; mInicio = null;
+    mImg.hidden = true; mImg.removeAttribute("src"); mEspera.hidden = false; mEspera.textContent = "Pegando uma imagem do vídeo…";
+    desenharCaixa();
+    marcador.showModal();
+    buscar().then(r => { mImg.src = r.imagem; mImg.hidden = false; mEspera.hidden = true; desenharCaixa(); })
+      .catch(erro => { mEspera.textContent = erro.message; });
+  });
+}
+function fecharMarcador(valor) {
+  const fim = mFim; mFim = null;
+  if (marcador.open) marcador.close();
+  fim?.(valor);
+}
+marcador.addEventListener("close", () => fecharMarcador(null));
+$("#m-fechar").addEventListener("click", () => fecharMarcador(null));
+$("#m-cancelar").addEventListener("click", () => fecharMarcador(null));
+mOk.addEventListener("click", () => fecharMarcador(mValor));
+function fracao(e) {
+  const r = mImg.getBoundingClientRect(), limitar = n => Math.min(1, Math.max(0, n));
+  return [limitar((e.clientX - r.left) / r.width), limitar((e.clientY - r.top) / r.height)];
+}
+mQuadro.addEventListener("pointerdown", e => {
+  if (mImg.hidden) return;
+  e.preventDefault();
+  mQuadro.setPointerCapture(e.pointerId);
+  mInicio = fracao(e);
+});
+mQuadro.addEventListener("pointermove", e => {
+  if (!mInicio) return;
+  const [x, y] = fracao(e), x0 = Math.min(x, mInicio[0]), y0 = Math.min(y, mInicio[1]);
+  mValor = [x0, y0, Math.abs(x - mInicio[0]), Math.abs(y - mInicio[1])].map(n => n.toFixed(4)).join(",");
+  desenharCaixa();
+});
+mQuadro.addEventListener("pointerup", () => { mInicio = null; });
+
+/* onde a câmera está, em palavras: "canto inferior direito", "em cima, no meio"... */
+function ondeFica(valor) {
+  const [x, y, w, h] = valor.split(",").map(Number);
+  const cx = x + w / 2, cy = y + h / 2;
+  const lado = cx < 0.4 ? "esquerdo" : cx > 0.6 ? "direito" : "", alto = cy < 0.4 ? "superior" : cy > 0.6 ? "inferior" : "";
+  const lugar = lado && alto ? `canto ${alto} ${lado}` : lado ? `lado ${lado}` : alto ? (alto === "superior" ? "em cima" : "embaixo") : "no meio";
+  return `${lugar}, ${Math.round(w * 100)}% × ${Math.round(h * 100)}% da tela`;
+}
+function painelCamera() {
+  const ligado = form.elements.layout.value === "camera", valor = form.elements.camera.value;
+  $("#cam-painel").hidden = !ligado;
+  $("#cam-resumo").textContent = valor ? `Câmera marcada: ${ondeFica(valor)}.` : "Marque onde fica a câmera no vídeo antes de gerar.";
+  $("#cam-resumo").toggleAttribute("data-falta", !valor);
+  $("#cam-marcar").textContent = valor ? "Marcar de novo" : "Marcar a câmera";
+}
+painelCamera();
+form.addEventListener("change", painelCamera);
+form.addEventListener("change", e => {  // escolheu "Câmera em cima" sem a câmera marcada: já abre a foto para marcar
+  if (e.target.name === "layout" && e.target.value === "camera" && !form.elements.camera.value && origem.value.trim())
+    $("#cam-marcar").click();
+});
+$("#cam-marcar").addEventListener("click", async () => {
+  const valor = await marcarCamera(() => api("/api/quadro", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ origem: origem.value }) }), form.elements.camera.value);
+  if (!valor) return;
+  form.elements.camera.value = valor;
+  lembrar(); resumoOpcoes(); painelCamera();
+});
+
+/* as opções do painel valem tanto para o botão dele quanto para "Adicionar live" na lista de lives */
+function montarPedido(links, aoVivo) {
+  const [dmin, dmax] = form.elements.duracao.value.split("-").map(Number);
+  return {
+    origem: links, cortes: Number($("#cortes").value) || 5, dmin, dmax,
+    layout: form.elements.layout.value, camera: form.elements.camera.value, contexto: $("#contexto").value,
+    inicio: aoVivo ? "" : $("#inicio").value.trim(), fim: aoVivo ? "" : $("#fim").value.trim(), idioma: $("#idioma").value,
+    marca: $("#marca").value.trim(), comentario: $("#comentario").value, voz: seletorVoz.value,
+    abertura: $("#abertura").checked, traducao: $("#traducao").checked, legendas: $("#legendas").checked, usar_ia: $("#usar_ia").checked,
+    ao_vivo: aoVivo, limiar: Number(form.elements.limiar.value), triagem: aoVivo && $("#triagem").checked,
+  };
+}
+async function criar(pedido) {
+  const r = await api("/api/trabalhos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pedido) });
+  recado(pedido.ao_vivo ? (r.criados.length > 1 ? `${r.criados.length} lives sendo acompanhadas.` : "Acompanhando a live.") : r.criados.length > 1 ? `${r.criados.length} vídeos na fila.` : "Vídeo na fila.", "ok");
+  ir(pedido.ao_vivo ? "lives" : "criar");
+  await atualizar(true);
+}
+
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+  const botao = $("#gerar");
+  botao.disabled = true;
+  try {
+    await criar(montarPedido(origem.value, chaveVivo.checked));
+    origem.value = "";
+    if (rota?.pagina === "criar") $("#sec-fila").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (erro) {
+    recado(erro.message, "erro");
+    origem.focus();
+  } finally { botao.disabled = false; }
+});
+
+$("#nova-live").addEventListener("submit", async e => {
+  e.preventDefault();
+  const campo = $("#link-live"), botao = $("#adicionar-live");
+  if (!campo.value.trim()) return campo.focus();
+  botao.disabled = true;
+  try {
+    await criar(montarPedido(campo.value.trim(), true));
+    campo.value = "";
+  } catch (erro) {
+    recado(erro.message, "erro");
+    campo.focus();
+  } finally { botao.disabled = false; }
+});
+
+/* ---------- estado e desenho ---------- */
+let estado = { trabalhos: [], biblioteca: [], sistema: {} };
+let desenhoFila = "", desenhoFilaComp = "", desenhoLives = "", desenhoBib = "", fora = false, relogioAtualizar = 0;
+const estadosVistos = new Map(), cortesVistos = new Map(), registrosAbertos = new Set(), sessoesNovas = new Set();
+const aRemover = new Set();  // lives que saem da lista sozinhas assim que terminarem de encerrar
+
+function desenharSinais() {
+  const s = estado.sistema;
+  const ia = fora ? "" : s.ia && s.ia_falha ? `<span class="sinal" data-tom="alerta" title="${esc(s.ia_falha)}">${s.ia === "cli" ? "IA sem acesso: rode claude e digite /login" : "IA sem acesso: confira a chave da API"}</span>`
+    : s.ia === "api" ? `<span class="sinal" data-tom="ok">IA pela API</span>`
+    : s.ia === "cli" ? `<span class="sinal" data-tom="ok" title="Usa o login do Claude Code desta máquina">IA pelo Claude Code</span>`
+    : `<span class="sinal" data-tom="alerta" title="Instale e logue o Claude Code, ou defina ANTHROPIC_API_KEY">Sem IA: só picos de áudio</span>`;
+  const gpu = fora ? "" : s.gpu ? `<span class="sinal" data-tom="ok">Placa NVIDIA</span>` : `<span class="sinal">Sem placa NVIDIA: mais lento</span>`;
+  const html = fora ? `<span class="sinal" data-tom="erro">Programa fechado. Abra o corte-maker de novo.</span>` : ia + gpu;
+  if ($("#sinais").innerHTML !== html) $("#sinais").innerHTML = html;
+}
+
+/* o que procurar pode ser trocado com a live no ar; o rascunho fica aqui porque o cartão é redesenhado a cada segundo */
+const rascunhos = new Map();
+function campoContexto(t) {
+  if (!("contexto" in t)) return "";  // programa aberto antes desta função existir: sem o campo, em vez de um que não salva
+  const salvo = t.contexto || "", texto = rascunhos.has(t.id) ? rascunhos.get(t.id) : salvo, mudou = texto.trim() !== salvo;
+  return `<div class="ctx">
+      <label class="rotulo" for="ctx-${t.id}">O que procurar</label>
+      <div class="ctx-linha">
+        <textarea class="texto ctx-campo" id="ctx-${t.id}" data-ctx="${t.id}" rows="2" maxlength="500" placeholder="Ex.: gameplay de GTA 6, foco em humor, bugs e reações">${esc(texto)}</textarea>
+        <button class="fantasma" data-ctx-salvar="${t.id}"${mudou ? "" : " disabled"}>${mudou ? "Salvar" : "Salvo"}</button>
+      </div>
+      ${campoNota(t)}
+      <p class="dica">As mudanças valem a partir da próxima análise desta live.</p>
+    </div>`;
+}
+const NOTAS = [[85, "Só os melhores · 85+"], [75, "Equilibrado · 75+"], [65, "Mais cortes · 65+"], [50, "Quase tudo · 50+"]];
+const QUADROS = [["blur", "Aproximado · zoom no centro"], ["cheio", "Tela cheia · corta as laterais"], ["inteiro", "Inteiro · mostra o vídeo todo"],
+  ["preto", "Inteiro sem blur · fundo preto"], ["camera", "Câmera em cima · jogo embaixo"]];
+function seletor(t, ajuste, rotulo, opcoes, atual) {
+  return `<div class="campo"><label class="rotulo" for="${ajuste}-${t.id}">${rotulo}</label>
+      <select class="texto ctx-nota" id="${ajuste}-${t.id}" data-ajuste="${ajuste}" data-id="${t.id}" style="font-family:var(--f-texto)">
+        ${opcoes.map(([v, nome]) => `<option value="${v}"${v === atual ? " selected" : ""}>${nome}</option>`).join("")}
+      </select></div>`;
+}
+function campoNota(t) {
+  if (!("limiar" in t)) return "";
+  const notas = NOTAS.some(([n]) => n === t.limiar) ? NOTAS : [[t.limiar, `Nota ${t.limiar}+`], ...NOTAS];
+  // o enquadramento só aparece se o programa aberto já souber trocá-lo no meio da live
+  const quadro = t.opcoes ? seletor(t, "layout", "Enquadramento vertical", QUADROS, t.opcoes.layout) : "";
+  return `<div class="ctx-dupla">${seletor(t, "limiar", "Nota mínima para virar corte", notas, t.limiar)}${quadro}</div>`;
+}
+
+/* A gravação fecha um pedaço a cada 20 s, e é só aí que o tempo acompanhado muda no servidor. Entre um pedaço e
+   outro o relógio do cartão anda sozinho, para a live não parecer travada. Se a gravação parar de verdade, ele
+   para de andar depois de 20 s. */
+const pedacosVistos = new Map();  // id -> { valor, desde }
+function segundosDesdeOUltimoPedaco(t) {
+  const bruto = t.vivo?.decorrido || 0, agora = Date.now();
+  let r = pedacosVistos.get(t.id);
+  if (!r || r.valor !== bruto) pedacosVistos.set(t.id, r = { valor: bruto, desde: agora });
+  const gravando = !t.parando && (!t.vivo?.fase || t.vivo.fase === "gravando");
+  return gravando ? Math.min(19, Math.floor((agora - r.desde) / 1000)) : 0;
+}
+/* quando a última análise chegou perto da exigência, diz isso com todas as letras: é o motivo mais comum de uma
+   live ficar muito tempo sem soltar corte */
+function quaseCorte(t) {
+  const linha = t.registro.findLast(l => l.includes("nenhum corte novo"));
+  const m = linha && linha.match(/melhor nota: (\d+), mínimo: (\d+)/);
+  if (!m || Number(m[2]) - Number(m[1]) > 10) return "";
+  return `<p class="nota-quase">Quase: o melhor momento da última análise teve nota <b>${m[1]}</b> e a exigência é <b>${m[2]}</b>. Para momentos assim virarem corte, baixe a nota mínima abaixo, ou use “Cortar agora”.</p>`;
+}
+
+/* quanto o trabalho já gastou: chamadas e tokens da IA com o custo estimado em dólar, e os caracteres de voz paga */
+function linhaGasto(t) {
+  const g = t.vivo?.gasto;
+  if (!g || !g.chamadas_ia) return "";
+  const mil = n => n >= 1000 ? `${(n / 1000).toFixed(1).replace(".", ",")} mil` : String(n);
+  const entrada = g.tokens_entrada + g.tokens_cache_lido + g.tokens_cache_escrito;
+  const custo = g.chamadas_sem_preco === g.chamadas_ia ? "" : ` · cerca de US$ ${g.custo_ia_usd.toFixed(2).replace(".", ",")}`;
+  const voz = g.voz_caracteres ? ` · voz: ${g.voz_caracteres} caracteres` : "";
+  return `<p class="ultima">Gasto: ${g.chamadas_ia} ${g.chamadas_ia === 1 ? "chamada" : "chamadas"} à IA · ${mil(entrada)} tokens de entrada, ${mil(g.tokens_saida)} de saída${custo}${voz}</p>`;
+}
+
+function partesVivo(t) {
+  const v = t.vivo || {}, ativo = t.estado === "rodando";
+  const ultima = t.registro.at(-1) || "";
+  const extra = ativo ? segundosDesdeOUltimoPedaco(t) : 0;
+  const fase = t.parando || v.fase === "encerrando" ? "encerrando…" : v.fase === "analisando" ? "analisando…"
+    : v.fase === "cortando" ? "fazendo corte manual…" : relogio(Math.max(0, (v.proxima ?? 0) - extra));
+  let corpo;
+  if (t.estado === "fila") corpo = `<p class="ultima">Aguardando terminar o que está na frente da fila.</p>`;
+  else if (ativo) corpo = `
+    <dl class="placar-vivo">
+      <div><dt class="rotulo">Acompanhado</dt><dd>${relogio((v.decorrido || 0) + extra, true)}</dd></div>
+      <div><dt class="rotulo">Cortes</dt><dd class="fala">${v.n_cortes || 0}</dd></div>
+      <div><dt class="rotulo">Próxima análise</dt><dd>${fase}</dd></div>
+    </dl>
+    <p class="ultima">${esc(ultima.startsWith("[") ? "Conectando à live…" : ultima)}</p>
+    ${linhaGasto(t)}
+    ${quaseCorte(t)}
+    ${campoContexto(t)}
+    <div class="trab-pe"><button class="fantasma" data-parar="${t.id}"${t.parando ? " disabled" : ""}>${t.parando ? (aRemover.has(t.id) ? "Removendo…" : "Parando…") : "Parar de monitorar"}</button>
+      ${t.parando ? "" : `<button class="fantasma" data-tirar="${t.id}" title="Para de monitorar, analisa o que faltou e tira a live desta lista. Os cortes já feitos continuam na aba Cortes.">Remover da lista</button>`}
+      ${v.n_cortes ? `<button class="fantasma" data-ver="${esc(v.pasta)}">Ver cortes</button>` : ""}</div>`;
+  else if (t.estado === "erro") corpo = `<p class="nota-erro">Não deu certo: ${esc(t.erro)}</p>`;
+  else if (t.estado === "vazio") corpo = `<p class="ultima">Monitoramento encerrado. Nenhum momento passou da nota mínima.</p>`;
+  else corpo = `<div class="trab-pe"><span class="selo-ok">Encerrado com ${t.n_cortes} ${t.n_cortes === 1 ? "corte" : "cortes"}</span><button class="fantasma" data-ver="${esc(t.pasta)}">Ver cortes</button></div>`;
+  const avisos = t.avisos.map(a => `<p class="nota-aviso">${esc(a)}</p>`).join("");
+  const registro = t.registro.length ? `<details data-reg="${t.id}"${registrosAbertos.has(t.id) ? " open" : ""}><summary>Registro completo</summary><pre>${esc(t.registro.join("\n"))}</pre></details>` : "";
+  const remover = ativo ? "" : `<button class="fechar" data-remover="${t.id}" aria-label="Dispensar" title="Dispensar">✕</button>`;
+  // duas partes redesenhadas em separado; entre elas fica a prévia, que não pode ser recriada a cada segundo
+  return [`<div class="trab-topo"><div class="trab-nome"><strong>${ativo ? `<span class="no-ar">Ao vivo</span> ` : ""}${esc(t.titulo || t.origem)}</strong>${t.titulo ? `<small>${esc(t.origem)}</small>` : ""}</div>${remover}</div>`,
+    `${corpo}${avisos}${registro}`];
+}
+
+/* ---------- lista de lives: um cartão fixo por live, com a prévia da gravação e o corte manual ---------- */
+const cartoesLives = new Map();  // id -> { el, cab, previa, resto, video, htmlCab, htmlResto, vendo, ultima }
+function novoCartaoLive(t) {
+  const el = document.createElement("article");
+  el.className = "trab";
+  el.dataset.vivo = "1";
+  el.dataset.id = t.id;
+  el.innerHTML = `<div class="trab-cab"></div>
+    <div class="previa" hidden>
+      <div class="previa-tela" hidden><video controls playsinline preload="auto"></video>
+        <p class="dica">Esta é a gravação que o programa está fazendo, uns 30 segundos atrás da live.</p></div>
+      <div class="previa-acoes">
+        <button type="button" class="fantasma" data-previa="${t.id}">▶ Ver prévia</button>
+        <span class="espaco"></span>
+        <label class="so-leitor" for="dur-${t.id}">Tamanho do corte manual</label>
+        <select class="texto" id="dur-${t.id}" style="font-family:var(--f-texto)">
+          <option value="30">Últimos 30 s</option><option value="45" selected>Últimos 45 s</option>
+          <option value="60">Últimos 60 s</option><option value="90">Últimos 90 s</option></select>
+        <button type="button" class="cheio" data-cortar="${t.id}">✂ Cortar agora</button>
+      </div>
+    </div>
+    <div class="trab-resto"></div>`;
+  const c = { el, cab: el.children[0], previa: el.children[1], resto: el.children[2], video: el.querySelector("video"),
+              htmlCab: "", htmlResto: "", vendo: false, ultima: null };
+  const seguir = () => { c.video.dataset.fim = "1"; tocarPrevia(c, t.id); };  // acabou o pedaço (ou falhou): vai para o mais novo
+  c.video.addEventListener("ended", seguir);
+  c.video.addEventListener("error", seguir);
+  return c;
+}
+function tocarPrevia(c, id) {
+  const p = c.ultima, v = c.video;
+  if (!c.vendo || !p || v.dataset.arq === p.arq) return;  // fechada, ou ainda não há pedaço mais novo
+  if (v.dataset.arq && !v.dataset.fim) return;             // o pedaço atual ainda está tocando
+  v.dataset.arq = p.arq;
+  v.dataset.inicio = p.inicio;
+  delete v.dataset.fim;
+  v.src = `/api/trabalhos/${id}/previa/${p.arq}`;
+  v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });  // sem permissão para som: toca mudo
+}
+function fecharPrevia(c) {
+  c.vendo = false;
+  c.video.pause();
+  c.video.removeAttribute("src");
+  c.video.load();
+  delete c.video.dataset.arq;
+  delete c.video.dataset.fim;
+  c.previa.querySelector(".previa-tela").hidden = true;
+  c.previa.querySelector("[data-previa]").textContent = "▶ Ver prévia";
+}
+function desenharLives(lives) {
+  const lista = $("#lives");
+  const ordem = [...lives.filter(t => t.estado === "rodando"), ...lives.filter(t => t.estado !== "rodando")];
+  if (!ordem.length) {
+    if (desenhoLives !== "vazio") { lista.innerHTML = LIVES_VAZIO; desenhoLives = "vazio"; cartoesLives.clear(); }
+    return;
+  }
+  if (desenhoLives !== "lista") { lista.innerHTML = ""; desenhoLives = "lista"; }
+  for (const [id, c] of cartoesLives) if (!ordem.some(t => t.id === id)) { c.el.remove(); cartoesLives.delete(id); }
+  const foco = document.activeElement?.matches?.(".ctx-campo, .ctx-nota") ? document.activeElement : null;
+  ordem.forEach((t, i) => {
+    let c = cartoesLives.get(t.id);
+    if (!c) cartoesLives.set(t.id, c = novoCartaoLive(t));
+    if (lista.children[i] !== c.el) lista.insertBefore(c.el, lista.children[i] || null);
+    c.el.dataset.estado = t.estado;
+    const [cab, resto] = partesVivo(t);
+    if (cab !== c.htmlCab) { c.cab.innerHTML = cab; c.htmlCab = cab; }
+    // digitando ou escolhendo neste cartão: não troca o campo debaixo do cursor
+    if (resto !== c.htmlResto && !(foco && c.el.contains(foco))) { c.resto.innerHTML = resto; c.htmlResto = resto; }
+    // prévia e corte manual: só com a live no ar e num programa que já saiba servir os pedaços gravados
+    const ativa = t.estado === "rodando" && !t.parando && !!t.vivo?.trabalho;
+    c.previa.hidden = !ativa;
+    c.ultima = t.vivo?.previa || null;
+    if (!ativa) { if (c.vendo) fecharPrevia(c); }
+    else tocarPrevia(c, t.id);
+  });
+}
+
+function cartaoTrabalho(t) {
+  const ativo = t.estado === "rodando";
+  const nome = t.titulo || t.origem, comp = t.tipo === "compilacao";
+  const trilho = (comp ? ETAPAS_COMPILACAO : ETAPAS).map((rotulo, i) => {
+    const n = i + 1;
+    const cls = t.estado === "pronto" || t.estado === "vazio" || n < t.etapa ? "feito"
+      : n === t.etapa && ativo ? "agora" + (t.pct == null ? " solto" : "") : "";
+    const p = n === t.etapa && t.pct != null ? ` style="--p:${t.pct}%"` : "";
+    return `<li class="${cls}"${p}>${rotulo}</li>`;
+  }).join("");
+  const ultima = t.registro.at(-1) || "";
+  let corpo = "";
+  if (t.estado === "fila") corpo = `<p class="ultima">Aguardando a vez na fila.</p>`;
+  else if (ativo) corpo = `<p class="ultima"><b>${esc(t.etapa_texto)}${t.pct != null ? ` · ${Math.round(t.pct)}%` : ""}</b>${ultima && !ultima.startsWith("[") ? " — " + esc(ultima) : ""}</p>`;
+  else if (t.estado === "erro") corpo = `<p class="nota-erro">Não deu certo: ${esc(t.erro)}</p>`;
+  else if (t.estado === "vazio") corpo = `<p class="ultima">Nenhum momento encontrado neste vídeo.</p>`;
+  else if (comp) corpo = `<div class="trab-pe"><span class="selo-ok">Compilação pronta, com ${t.n_cortes} momentos</span><button class="fantasma" data-ver="${esc(t.pasta)}">Ver compilação</button></div>`;
+  else corpo =`<div class="trab-pe"><span class="selo-ok">${t.n_cortes} ${t.n_cortes === 1 ? "corte pronto" : "cortes prontos"}</span><button class="fantasma" data-ver="${esc(t.pasta)}">Ver cortes</button></div>`;
+  const avisos = t.avisos.map(a => `<p class="nota-aviso">${esc(a)}</p>`).join("");
+  const registro = t.registro.length ? `<details data-reg="${t.id}"${registrosAbertos.has(t.id) ? " open" : ""}><summary>Registro completo</summary><pre>${esc(t.registro.join("\n"))}</pre></details>` : "";
+  const remover = ativo ? "" : `<button class="fechar" data-remover="${t.id}" aria-label="${t.estado === "fila" ? "Tirar da fila" : "Dispensar"}" title="${t.estado === "fila" ? "Tirar da fila" : "Dispensar"}">✕</button>`;
+  return `<article class="trab" data-estado="${t.estado}">
+    <div class="trab-topo"><div class="trab-nome"><strong>${esc(nome)}</strong>${comp ? `<small>compilação</small>` : t.titulo ? `<small>${esc(t.origem)}</small>` : ""}</div>${remover}</div>
+    <ol class="trilho">${trilho}</ol>${corpo}${avisos}${registro}</article>`;
+}
+
+const LIVES_VAZIO = `<div class="vazio"><h3>Nenhuma live monitorada</h3>
+  <p>Cole acima o link de uma live que está no ar. Ela entra nesta lista, e os cortes saem enquanto a transmissão acontece.</p></div>`;
+function desenharFila() {
+  const lives = estado.trabalhos.filter(t => t.ao_vivo), gravados = estado.trabalhos.filter(t => !t.ao_vivo);
+  // vídeos gravados sendo cortados: na página Criar. Compilações sendo montadas: na página delas.
+  const videos = gravados.filter(t => t.tipo !== "compilacao"), comps = gravados.filter(t => t.tipo === "compilacao");
+  const processando = videos.filter(t => t.estado === "rodando").length, naFila = videos.filter(t => t.estado === "fila").length;
+  $("#conta-fila").textContent = [processando && `${processando} processando`, naFila && `${naFila} na fila`].filter(Boolean).join(" · ");
+  $("#fila-vazia").hidden = !!videos.length;
+  const html = videos.map(cartaoTrabalho).join("");
+  if (html !== desenhoFila) { $("#fila").innerHTML = html; desenhoFila = html; }
+  $("#sec-fila-comp").hidden = !comps.length;
+  const htmlComp = comps.map(cartaoTrabalho).join("");
+  if (htmlComp !== desenhoFilaComp) { $("#fila-comp").innerHTML = htmlComp; desenhoFilaComp = htmlComp; }
+  // página das lives: no ar primeiro, encerradas depois
+  const noAr = lives.filter(t => t.estado === "rodando");
+  for (const id of rascunhos.keys()) if (!noAr.some(t => t.id === id)) rascunhos.delete(id);
+  const feitos = noAr.reduce((n, t) => n + (t.vivo?.n_cortes || 0), 0), gasto = noAr.reduce((n, t) => n + (t.vivo?.gasto?.custo_ia_usd || 0), 0);
+  const resumo = noAr.length
+    ? [`${noAr.length} no ar`, `${feitos} ${feitos === 1 ? "corte feito" : "cortes feitos"} nesta rodada`, gasto ? `IA: cerca de US$ ${gasto.toFixed(2).replace(".", ",")}` : ""].filter(Boolean).join(" · ")
+    : "Cole o link de uma live que está no ar: os cortes saem enquanto a transmissão acontece.";
+  if ($("#resumo-lives").textContent !== resumo) $("#resumo-lives").textContent = resumo;
+  desenharLives(lives);
+}
+
+/* os números das abas: o que está acontecendo em cada página, visível de qualquer uma */
+function desenharNav() {
+  const ativo = t => t.estado === "rodando" || t.estado === "fila";
+  const videos = estado.trabalhos.filter(t => !t.ao_vivo && t.tipo !== "compilacao" && ativo(t)).length;
+  const noAr = estado.trabalhos.filter(t => t.ao_vivo && t.estado === "rodando").length;
+  const total = estado.biblioteca.reduce((n, s) => n + s.cortes.length, 0), prontas = estado.compilacoes?.prontas || [];
+  const numeros = { criar: videos ? String(videos) : "", lives: noAr ? `${noAr}<i> no ar</i>` : "", cortes: total ? String(total) : "", comp: prontas.length ? String(prontas.length) : "" };
+  for (const [k, v] of Object.entries(numeros)) if ($("#n-" + k).innerHTML !== v) $("#n-" + k).innerHTML = v;
+  const aba = nome => $(`[data-rota="${nome}"]`), novas = [...sessoesNovas];
+  aba("criar").toggleAttribute("data-ativo", videos > 0);
+  aba("lives").toggleAttribute("data-vivo", noAr > 0);
+  aba("compilacoes").toggleAttribute("data-ativo", estado.trabalhos.some(t => t.tipo === "compilacao" && ativo(t)));
+  aba("cortes").toggleAttribute("data-novo", rota?.pagina !== "cortes" && novas.some(p => estado.biblioteca.some(s => s.pasta === p)));
+  aba("compilacoes").toggleAttribute("data-novo", rota?.pagina !== "compilacoes" && novas.some(p => prontas.some(c => c.pasta === p)));
+}
+$("#palco").addEventListener("change", async e => {
+  const ajuste = e.target.dataset?.ajuste, id = e.target.dataset?.id;
+  if (!ajuste || !id) return;
+  const valor = ajuste === "limiar" ? Number(e.target.value) : e.target.value;
+  e.target.blur();  // solta o campo para o cartão voltar a ser redesenhado
+  const pedido = { [ajuste]: valor };
+  if (ajuste === "layout" && valor === "camera") {
+    // marca a câmera num quadro do que a live já gravou; começa da posição que ela tinha, ou da do formulário
+    const t = estado.trabalhos.find(t => t.id === id);
+    pedido.camera = await marcarCamera(() => api(`/api/trabalhos/${id}/quadro`, { method: "POST" }),
+      t?.opcoes?.camera || form.elements.camera.value);
+    if (!pedido.camera) { atualizar(true); return; }
+  }
+  try {
+    await api(`/api/trabalhos/${id}/contexto`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pedido) });
+    recado(ajuste === "limiar" ? `Nota mínima desta live: ${valor}. Vale a partir da próxima análise.`
+      : "Enquadramento trocado. Vale a partir do próximo corte desta live.", "ok");
+  } catch (erro) { recado(erro.message, "erro"); }
+  atualizar(true);
+});
+$("#palco").addEventListener("input", e => {
+  const id = e.target.dataset?.ctx;
+  if (!id) return;
+  rascunhos.set(id, e.target.value);
+  const botao = e.target.closest(".ctx").querySelector("[data-ctx-salvar]");
+  botao.disabled = false;
+  botao.textContent = "Salvar";
+});
+function nivel(nota) { return nota >= 85 ? "alta" : nota >= 70 ? "media" : "baixa"; }
+
+function cartaoSessao(s, si, lista) {  // `lista`: os cortes a mostrar, cada um com o seu número na sessão ([corte, índice])
+  const ji = s.janela_inicio || 0, jf = s.janela_fim || 1, vao = Math.max(1, jf - ji);
+  const marcas = lista.map(([c, ci]) => {
+    const esq = 100 * (c.inicio - ji) / vao, larg = 100 * (c.fim - c.inicio) / vao;
+    return `<button data-s="${si}" data-c="${ci}" style="left:${esq.toFixed(2)}%;width:${larg.toFixed(2)}%" title="${esc(c.titulo)} · ${relogio(c.inicio, true)}" aria-label="Abrir corte ${ci + 1}"></button>`;
+  }).join("");
+  const cartoes = lista.map(([c, ci]) => `
+    <button class="corte" data-s="${si}" data-c="${ci}" aria-label="Corte ${ci + 1}: ${esc(c.titulo)}, nota ${c.nota}">
+      <span class="quadro"><img src="${midia(s.pasta, c.capa, c.editado)}" alt="" loading="lazy" onerror="this.remove()">
+        <span class="ordem">${String(ci + 1).padStart(2, "0")}</span><span class="nota" data-n="${nivel(c.nota)}">${c.nota}</span>
+        <span class="dur">${relogio(c.duracao)}</span></span>
+      <span class="corte-titulo">${esc(c.titulo)}</span>
+    </button>`).join("");
+  const quando = new Date((s.criado_em || 0) * 1000).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const detalhes = [s.canal, `${s.cortes.length} ${s.cortes.length === 1 ? "corte" : "cortes"}`, quando].filter(Boolean).map(esc).join(" · ");
+  const fonte = /^https?:\/\//.test(s.url || "") ? `<a class="fantasma" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">Vídeo original ↗</a>` : "";
+  return `<article class="sessao${sessoesNovas.has(s.pasta) ? " nova" : ""}" data-pasta="${esc(s.pasta)}">
+    <div class="sessao-topo"><div><h3>${s.ao_vivo ? `<span class="no-ar">Ao vivo</span> ` : ""}${esc(s.titulo)}</h3><p>${detalhes}</p></div>
+      <div class="sessao-acoes">${fonte}<button class="fantasma" data-abrir="${esc(s.pasta)}">Abrir pasta</button></div></div>
+    <div class="tempo"><span>${relogio(ji, true)}</span><div class="tempo-faixa">${marcas}</div><span>${relogio(jf, true)}</span></div>
+    <div class="grade">${cartoes}</div></article>`;
+}
+
+const deLive = s => "ao_vivo" in s;  // só as sessões que nasceram de uma live trazem este campo no manifesto
+function desenharBiblioteca() {
+  const bib = estado.biblioteca;
+  const assinatura = JSON.stringify(bib) + [...sessoesNovas].join() + filtroBib + "\n" + busca;
+  if (assinatura === desenhoBib) return;
+  desenhoBib = assinatura;
+  for (const b of document.querySelectorAll("[data-filtro]")) b.setAttribute("aria-pressed", String(b.dataset.filtro === filtroBib));
+  if (!bib.length) return;  // fica o convite inicial que já está na página
+  // o índice de cada sessão e de cada corte continua sendo o da lista completa: é por ele que o visor acha o corte
+  const tem = texto => String(texto || "").toLowerCase().includes(busca);
+  const visiveis = [];
+  bib.forEach((s, si) => {
+    if (filtroBib !== "tudo" && (filtroBib === "lives") !== deLive(s)) return;
+    let lista = s.cortes.map((c, ci) => [c, ci]);
+    if (busca && !tem(s.titulo) && !tem(s.canal)) lista = lista.filter(([c]) => tem(c.titulo) || tem(c.descricao));
+    if (lista.length || !busca) visiveis.push([s, si, lista]);
+  });
+  const mostrados = visiveis.reduce((n, v) => n + v[2].length, 0);
+  $("#conta-bib").textContent = `${mostrados} ${mostrados === 1 ? "vídeo" : "vídeos"} em ${visiveis.length} ${visiveis.length === 1 ? "sessão" : "sessões"}${busca ? ` com "${busca}"` : ""}`;
+  $("#biblioteca").innerHTML = visiveis.length ? visiveis.map(v => cartaoSessao(...v)).join("")
+    : `<div class="vazio"><h3>Nada aqui</h3><p>${busca ? "Nenhum corte com esse texto no título, na descrição ou no canal." : filtroBib === "lives" ? "Os cortes das lives monitoradas aparecem aqui." : "Os cortes de vídeos gravados aparecem aqui."}</p></div>`;
+}
+
+/* compilações: os temas que a IA propôs com os cortes da biblioteca e os vídeos horizontais já montados */
+let desenhoComp = "";
+const naFilaDeCompilar = titulo => estado.trabalhos.some(t => t.tipo === "compilacao" && t.origem === titulo && (t.estado === "fila" || t.estado === "rodando"));
+function cartaoTema(tema, i) {
+  const canais = [...new Set(tema.cortes.map(c => c.canal).filter(Boolean))];
+  const detalhes = [tema.tema, `${tema.cortes.length} cortes`, `cerca de ${Math.max(1, Math.round(tema.duracao / 60))} min`, canais.join(", ")].filter(Boolean).map(esc).join(" · ");
+  const ocupado = naFilaDeCompilar(tema.titulo), poucos = tema.cortes.length < 2;
+  const tira = tema.cortes.map(c => `<li title="${esc(c.titulo)}${c.canal ? " · " + esc(c.canal) : ""}"><img src="${midia(c.pasta, c.capa)}" alt="" loading="lazy" onerror="this.remove()"></li>`).join("");
+  return `<article class="tema">
+    <div class="tema-topo"><div><h3>${esc(tema.titulo)}</h3><p>${detalhes}</p></div>
+      <button class="cheio" data-gerar-tema="${i}"${ocupado || poucos ? " disabled" : ""}>${ocupado ? "Na fila" : "Gerar vídeo"}</button></div>
+    ${tema.motivo ? `<p class="tema-motivo">${esc(tema.motivo)}</p>` : ""}
+    ${tema.faltam ? `<p class="dica">${tema.faltam} ${tema.faltam === 1 ? "corte deste tema não está" : "cortes deste tema não estão"} mais na biblioteca.</p>` : ""}
+    <ol class="tira">${tira}</ol></article>`;
+}
+function cartaoCompilacao(c, i) {
+  const quando = new Date((c.criado_em || 0) * 1000).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const noYoutube = estado.youtube?.publicados?.[`${c.pasta}/${c.arquivo}`];
+  const detalhes = [`${c.capitulos.length} momentos`, relogio(c.duracao), quando, noYoutube ? "no YouTube" : ""].filter(Boolean).map(esc).join(" · ");
+  return `<article class="sessao comp${sessoesNovas.has(c.pasta) ? " nova" : ""}" data-pasta="${esc(c.pasta)}">
+    <button class="comp-capa" data-comp="${i}" aria-label="Assistir: ${esc(c.titulo)}"><img src="${midia(c.pasta, c.miniatura)}" alt="" loading="lazy" onerror="this.remove()"><span class="dur">${relogio(c.duracao)}</span></button>
+    <div class="comp-info"><div class="sessao-topo"><div><h3>${esc(c.titulo)}</h3><p>${detalhes}</p></div></div>
+      <div class="sessao-acoes"><button class="cheio" data-comp="${i}">Assistir</button><button class="fantasma" data-abrir="${esc(c.pasta)}">Abrir pasta</button></div></div></article>`;
+}
+function desenharCompilacoes() {
+  const k = estado.compilacoes;
+  $("#sec-comp").hidden = !k;  // programa aberto antes de as compilações existirem: só aparecem depois de reiniciar
+  $("#comp-indisponivel").hidden = !!k;
+  if (!k) return;
+  const botao = $("#propor-temas");
+  botao.disabled = k.propondo;
+  botao.textContent = k.propondo ? "Escolhendo temas…" : k.tem_proposta ? "Propor de novo" : "Propor temas";
+  $("#sec-prontas").hidden = !k.prontas.length;
+  $("#conta-comp").textContent = k.prontas.length ? `${k.prontas.length} ${k.prontas.length === 1 ? "vídeo" : "vídeos"}` : "";
+  $("#conta-temas").textContent = k.temas.length ? `${k.temas.length} ${k.temas.length === 1 ? "tema" : "temas"}` : "";
+  const aviso = k.propondo ? "A IA está lendo a biblioteca de cortes. Leva perto de um minuto."
+    : k.erro ? `Não deu para escolher os temas: ${k.erro}`
+    : k.tem_proposta && !k.temas.length ? `A IA não encontrou nenhum tema com pelo menos ${k.minimo} cortes${k.pedido ? ` para "${k.pedido}"` : ""}. Junte mais cortes ou peça outro tema.`
+    : k.tem_proposta && !k.atual ? "A biblioteca mudou depois desta proposta. Propor de novo inclui os cortes novos." : "";
+  $("#aviso-temas").hidden = !aviso;
+  $("#aviso-temas").textContent = aviso;
+  const assinatura = JSON.stringify([k.temas, k.prontas, k.temas.map(t => naFilaDeCompilar(t.titulo)), [...sessoesNovas], Object.keys(estado.youtube?.publicados || {})]);
+  if (assinatura === desenhoComp) return;
+  desenhoComp = assinatura;
+  $("#temas").innerHTML = k.temas.map(cartaoTema).join("");
+  $("#comps").innerHTML = k.prontas.map(cartaoCompilacao).join("");
+}
+$("#pedir-temas").addEventListener("submit", async e => {
+  e.preventDefault();
+  try {
+    await api("/api/compilacoes/temas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: $("#pedido-tema").value.trim(), marca: $("#marca").value.trim() }) });
+    atualizar(true);
+  } catch (erro) { recado(erro.message, "erro"); }
+});
+
+async function atualizar(agora) {
+  clearTimeout(relogioAtualizar);
+  try {
+    estado = await api("/api/estado");
+    fora = false;
+    for (const t of estado.trabalhos) {
+      const antes = estadosVistos.get(t.id);
+      if (antes && antes !== t.estado) {
+        if (t.estado === "pronto") { sessoesNovas.add(t.pasta); recado(t.tipo === "compilacao" ? `Compilação pronta: ${t.titulo || t.origem}` : `${t.n_cortes} ${t.n_cortes === 1 ? "corte pronto" : "cortes prontos"}: ${t.titulo || t.origem}`, "ok"); }
+        if (t.estado === "erro") recado(`Não deu certo: ${t.erro}`, "erro");
+      }
+      estadosVistos.set(t.id, t.estado);
+      const feitos = t.vivo?.n_cortes || 0;
+      if (t.ao_vivo && feitos > (cortesVistos.get(t.id) ?? feitos)) { sessoesNovas.add(t.vivo.pasta); recado(`Novo corte da live: ${t.vivo.ultimo}`, "ok"); }
+      if (t.ao_vivo) cortesVistos.set(t.id, feitos);
+    }
+    for (const id of [...aRemover]) {  // "Remover da lista": some assim que a live termina de encerrar
+      const t = estado.trabalhos.find(x => x.id === id);
+      if (!t) aRemover.delete(id);
+      else if (t.estado !== "rodando") {
+        aRemover.delete(id);
+        await api("/api/trabalhos/" + id, { method: "DELETE" }).catch(() => {});
+        estado.trabalhos = estado.trabalhos.filter(x => x.id !== id);
+      }
+    }
+    desenharFila();
+    desenharCompilacoes();
+    desenharBiblioteca();
+    desenharNav();
+    desenharPublicacao();
+  } catch { fora = true; }
+  // com os dados na mão, o endereço é aplicado de novo: agora a pasta ou o corte pedidos já podem ser achados
+  if (primeiraCarga) { primeiraCarga = false; rota = null; aplicarRota(); }
+  desenharSinais();
+  const ocupado = estado.compilacoes?.propondo || estado.trabalhos.some(t => t.estado === "rodando" || t.estado === "fila")
+    || pub.open || (estado.youtube?.envios || []).some(enviando) || $("#tiktok").open
+    || (estado.tiktok?.envios || []).some(e => e.estado === "enviando" || e.estado === "processando");
+  relogioAtualizar = setTimeout(atualizar, ocupado ? 1000 : 4000);
+}
+
+/* ---------- interações do palco ---------- */
+$("#palco").addEventListener("toggle", e => {
+  const id = e.target.dataset?.reg;
+  if (id) e.target.open ? registrosAbertos.add(id) : registrosAbertos.delete(id);
+}, true);
+
+document.addEventListener("click", async e => {
+  const alvo = e.target.closest("[data-filtro],[data-previa],[data-cortar],[data-tirar],[data-remover],[data-parar],[data-ver],[data-abrir],[data-ctx-salvar],[data-gerar-tema],[data-comp],.corte,.tempo-faixa button");
+  if (!alvo) return;
+  try {
+    if (alvo.dataset.gerarTema) {
+      const i = Number(alvo.dataset.gerarTema), tema = estado.compilacoes?.temas[i];
+      if (!tema) return;
+      alvo.disabled = true;
+      await api("/api/compilacoes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tema: i, titulo: tema.titulo, marca: $("#marca").value.trim() }) });
+      recado("Compilação na fila. O vídeo aparece aqui quando ficar pronto.", "ok");
+      await atualizar(true);
+      $("#sec-fila-comp").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    else if (alvo.dataset.comp) {
+      const c = estado.compilacoes?.prontas[Number(alvo.dataset.comp)];
+      if (c) ir(caminho("compilacoes", c.pasta));
+    }
+    else if (alvo.dataset.previa) {
+      const c = cartoesLives.get(alvo.dataset.previa);
+      if (!c) return;
+      if (c.vendo) return fecharPrevia(c);
+      c.vendo = true;
+      c.previa.querySelector(".previa-tela").hidden = false;
+      alvo.textContent = "■ Fechar prévia";
+      if (!c.ultima) recado("A prévia começa assim que o primeiro trecho da live terminar de gravar, em uns 40 segundos.");
+      tocarPrevia(c, alvo.dataset.previa);
+    }
+    else if (alvo.dataset.cortar) {
+      const id = alvo.dataset.cortar, c = cartoesLives.get(id);
+      if (!c) return;
+      const duracao = Number(c.previa.querySelector("select").value), v = c.video;
+      // com a prévia aberta, o corte termina no ponto que está na tela; fechada, no fim do que já foi gravado
+      const fim = c.vendo && v.dataset.arq && v.readyState > 0 ? Number(v.dataset.inicio) + v.currentTime : null;
+      alvo.disabled = true;
+      try {
+        await api(`/api/trabalhos/${id}/cortar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fim, duracao }) });
+        recado(`Corte dos últimos ${duracao} s pedido. Ele aparece na aba Cortes em cerca de um minuto.`, "ok");
+      } finally { alvo.disabled = false; }
+      atualizar(true);
+    }
+    else if (alvo.dataset.filtro) { filtroBib = alvo.dataset.filtro; desenharBiblioteca(); }
+    else if (alvo.dataset.tirar) {
+      aRemover.add(alvo.dataset.tirar);
+      await api(`/api/trabalhos/${alvo.dataset.tirar}/parar`, { method: "POST" });
+      recado("Encerrando esta live. Ela sai da lista assim que fechar a gravação; os cortes já feitos continuam na aba Cortes.");
+      atualizar(true);
+    }
+    else if (alvo.dataset.ctxSalvar) {
+      const id = alvo.dataset.ctxSalvar, campo = document.getElementById("ctx-" + id);
+      await api(`/api/trabalhos/${id}/contexto`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contexto: campo.value }) });
+      rascunhos.delete(id);
+      recado("Anotado. Vale a partir da próxima análise desta live.", "ok");
+      atualizar(true);
+    }
+    else if (alvo.dataset.parar) { await api(`/api/trabalhos/${alvo.dataset.parar}/parar`, { method: "POST" }); recado("Fechando a gravação e analisando o que faltou."); atualizar(true); }
+    else if (alvo.dataset.remover) { await api("/api/trabalhos/" + alvo.dataset.remover, { method: "DELETE" }); atualizar(true); }
+    else if (alvo.dataset.ver) {  // vai até a página onde o resultado mora: a sessão de cortes, ou a compilação já aberta
+      const pasta = alvo.dataset.ver, compilacao = (estado.compilacoes?.prontas || []).some(c => c.pasta === pasta);
+      ir(caminho(compilacao ? "compilacoes" : "cortes", pasta));
+    }
+    else if (alvo.dataset.abrir) await abrirPasta(alvo.dataset.abrir);
+    else verCorte(Number(alvo.dataset.s), Number(alvo.dataset.c));
+  } catch (erro) { recado(erro.message, "erro"); }
+});
+
+async function abrirPasta(pasta) {
+  await api("/api/abrir", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pasta }) });
+  recado("Pasta aberta no Explorador de Arquivos.");
+}
+
+/* passar o mouse num cartão toca a prévia sem som e acende a marca dele na linha do tempo (e vice-versa) */
+let esperaPrevia = 0;
+function acender(el, ligado) {
+  const sessao = el.closest(".sessao");
+  if (!sessao) return;
+  for (const par of sessao.querySelectorAll(`[data-c="${el.dataset.c}"]`)) if (par !== el) par.classList.toggle("aceso", ligado);
+}
+$("#biblioteca").addEventListener("pointerover", e => {
+  const el = e.target.closest(".corte, .tempo-faixa button");
+  if (!el || el.contains(e.relatedTarget)) return;
+  acender(el, true);
+  if (!el.classList.contains("corte") || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  clearTimeout(esperaPrevia);
+  esperaPrevia = setTimeout(() => {
+    const s = estado.biblioteca[el.dataset.s], c = s?.cortes[el.dataset.c];
+    if (!c || !el.matches(":hover")) return;
+    const v = document.createElement("video");
+    Object.assign(v, { muted: true, loop: true, playsInline: true, autoplay: true, src: midia(s.pasta, c.arquivo, c.editado) });
+    el.querySelector(".quadro").append(v);
+  }, 350);
+});
+$("#biblioteca").addEventListener("pointerout", e => {
+  const el = e.target.closest(".corte, .tempo-faixa button");
+  if (!el || el.contains(e.relatedTarget)) return;
+  acender(el, false);
+  clearTimeout(esperaPrevia);
+  el.querySelector("video")?.remove();
+});
+
+/* ---------- visor ---------- */
+const visor = $("#visor"), vVideo = $("#v-video");
+let aberto = null;
+
+function legendaDoPost(s, c) {
+  return [c.descricao, s.canal ? `Créditos: ${s.canal}` : "", c.hashtags.map(h => "#" + h).join(" ")].filter(Boolean).join("\n");
+}
+function abrirVisor(si, ci) {
+  const s = estado.biblioteca[si], c = s?.cortes[ci];
+  if (!c) return;
+  aberto = { si, ci, pasta: s.pasta, arquivo: c.arquivo, titulo: c.titulo, legenda: legendaDoPost(s, c) };
+  sessoesNovas.delete(s.pasta);
+  $("#v-ordem").textContent = `CORTE ${String(ci + 1).padStart(2, "0")} DE ${String(s.cortes.length).padStart(2, "0")}`;
+  $("#v-nota").textContent = c.nota;
+  $("#v-origem").textContent = c.origem === "ia" ? "de 100 · escolhido pela IA" : "de 100 · escolhido pelo pico de áudio";
+  $("#v-titulo").textContent = c.titulo;
+  $("#v-legenda").textContent = aberto.legenda;
+  $("#v-bloco-motivo").hidden = !c.motivo;
+  $("#v-motivo").textContent = c.motivo;
+  $("#v-trecho").textContent = `${relogio(c.inicio, true)} – ${relogio(c.fim, true)}`;
+  $("#v-dur").textContent = `${Math.round(c.duracao)} s`;
+  $("#v-baixar").href = midia(s.pasta, c.arquivo, c.editado);
+  $("#v-baixar").download = c.arquivo;
+  $("#v-ant").disabled = ci === 0;
+  $("#v-prox").disabled = ci === s.cortes.length - 1;
+  vVideo.src = midia(s.pasta, c.arquivo, c.editado);
+  vVideo.poster = midia(s.pasta, c.capa, c.editado);
+  desenharPublicacao();
+  desenharEdicao(c);
+  if (!visor.open) visor.showModal();
+  vVideo.play().catch(() => { /* reprodução automática bloqueada: o usuário aperta play */ });
+}
+function fecharVisor() { vVideo.pause(); vVideo.removeAttribute("src"); vVideo.load(); aberto = null; }
+
+/* ---------- editar um corte pronto: outro enquadramento, narração só nos que vão ser publicados ---------- */
+let vCamera = "", refazendo = false;
+const nomeVoz = () => seletorVoz.selectedOptions[0]?.textContent.split("·")[0].trim() || "voz padrão";
+function desenharEdicao(c) {
+  const editavel = !!c.editavel, roteiro = c.roteiro || {};
+  $("#v-sem-edicao").hidden = editavel;
+  $("#v-controles").hidden = !editavel;
+  if (!editavel) return;
+  vCamera = c.camera || "";
+  $("#v-layout").value = c.layout || "blur";
+  $("#v-cam").hidden = $("#v-layout").value !== "camera";
+  $("#v-cam").textContent = vCamera ? "Marcar de novo" : "Marcar a câmera";
+  const temRoteiro = !!(roteiro.fecho || roteiro.abertura);
+  $("#v-narra").hidden = !temRoteiro;
+  $("#v-sem-roteiro").hidden = temRoteiro;
+  $("#v-abertura").hidden = !roteiro.abertura;
+  $("#v-abertura").value = roteiro.abertura || "";
+  $("#v-fecho").value = roteiro.fecho || "";
+  $("#v-narra-estado").textContent = c.narrado
+    ? "Narrado. Se mudar o texto ou a voz, a fala é gravada de novo; trocar o enquadramento não grava de novo."
+    : "Sem narração. O texto abaixo é o que o narrador vai dizer no fim (pode editar antes):";
+  $("#v-narrar").textContent = c.narrado ? `Regravar narração · ${nomeVoz()}` : `Adicionar narração · ${nomeVoz()}`;
+  $("#v-tirar").hidden = !c.narrado;
+  for (const b of ["#v-aplicar", "#v-cam", "#v-narrar", "#v-tirar", "#v-layout"]) $(b).disabled = refazendo;
+  $("#v-processando").hidden = !refazendo;
+  $("#v-cancelar").disabled = false;
+  $("#v-cancelar").textContent = "Cancelar";
+}
+/* abre a foto do trecho original do corte para marcar a câmera; devolve a posição, ou "" se desistiu */
+async function marcarCameraDoCorte() {
+  if (!aberto) return "";
+  const alvo = { pasta: aberto.pasta, arquivo: aberto.arquivo };
+  const valor = await marcarCamera(() => api("/api/cortes/quadro", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(alvo) }), vCamera);
+  if (valor) { vCamera = valor; $("#v-cam").textContent = "Marcar de novo"; }
+  return valor || "";
+}
+$("#v-layout").addEventListener("change", () => {
+  const camera = $("#v-layout").value === "camera";
+  $("#v-cam").hidden = !camera;
+  if (camera && !vCamera) marcarCameraDoCorte();  // sem a posição da câmera não dá para montar: já pede
+});
+$("#v-cam").addEventListener("click", marcarCameraDoCorte);
+let pedidoAtual = null;  // o corte sendo refeito agora, para o botão Cancelar
+async function refazerCorte(pedido, botao, aviso) {
+  if (!aberto || refazendo) return;
+  if (pedido.layout === "camera" && !pedido.camera) {
+    pedido.camera = await marcarCameraDoCorte();
+    if (!pedido.camera) return;
+  }
+  const { si, ci, pasta, arquivo } = aberto, rotulo = botao.textContent;
+  refazendo = true;
+  pedidoAtual = { pasta, arquivo };
+  desenharEdicao(estado.biblioteca[si].cortes[ci]);
+  botao.textContent = "Refazendo…";
+  vVideo.pause(); vVideo.removeAttribute("src"); vVideo.load();  // solta o arquivo: no Windows ele não é trocado aberto
+  try {
+    const r = await api("/api/cortes/refazer", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pasta, arquivo, ...pedido }) });
+    const s = estado.biblioteca.find(s => s.pasta === pasta), c = s?.cortes.find(c => c.arquivo === arquivo);
+    if (c) Object.assign(c, r.corte);
+    recado(aviso, "ok");
+  } catch (erro) {
+    recado(erro.message, "erro");
+  } finally {
+    refazendo = false;
+    pedidoAtual = null;
+    botao.textContent = rotulo;  // o botão de narração ganha o rótulo certo logo abaixo, ao redesenhar
+    // a lista pode ter mudado de ordem enquanto refazia (uma live nova entra no topo): acha o corte pelo nome
+    const si2 = estado.biblioteca.findIndex(s => s.pasta === pasta);
+    const ci2 = si2 < 0 ? -1 : estado.biblioteca[si2].cortes.findIndex(c => c.arquivo === arquivo);
+    if (aberto?.pasta === pasta && aberto.arquivo === arquivo && ci2 >= 0) {
+      abrirVisor(si2, ci2);
+    }
+    desenharBiblioteca();
+  }
+}
+$("#v-aplicar").addEventListener("click", e =>
+  refazerCorte({ layout: $("#v-layout").value, camera: vCamera }, e.target, "Enquadramento trocado."));
+$("#v-narrar").addEventListener("click", e =>
+  refazerCorte({ narrado: true, voz: seletorVoz.value, layout: $("#v-layout").value, camera: vCamera,
+    textos: { abertura: $("#v-abertura").value, fecho: $("#v-fecho").value } }, e.target, "Narração adicionada."));
+$("#v-tirar").addEventListener("click", e => refazerCorte({ narrado: false }, e.target, "Narração tirada."));
+$("#v-cancelar").addEventListener("click", async () => {
+  if (!pedidoAtual) return;
+  $("#v-cancelar").disabled = true;
+  $("#v-cancelar").textContent = "Cancelando…";
+  try {
+    await api("/api/cortes/cancelar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pedidoAtual) });
+  } catch (erro) { recado(erro.message, "erro"); }
+});
+visor.addEventListener("close", () => {
+  fecharVisor();
+  // fechado pelo ✕ ou pelo Esc: o endereço volta para a pasta, sem rolar a página
+  if (rota?.pagina === "cortes" && rota.resto[1]) { history.replaceState(null, "", "#/" + caminho("cortes", rota.resto[0])); rota = lerRota(); }
+});
+visor.addEventListener("click", e => { if (e.target === visor) visor.close(); });
+$("#v-fechar").addEventListener("click", () => visor.close());
+$("#v-ant").addEventListener("click", () => aberto && verCorte(aberto.si, aberto.ci - 1, true));
+$("#v-prox").addEventListener("click", () => aberto && verCorte(aberto.si, aberto.ci + 1, true));
+$("#v-pasta").addEventListener("click", () => aberto && abrirPasta(aberto.pasta).catch(erro => recado(erro.message, "erro")));
+visor.addEventListener("keydown", e => {
+  if (!aberto || e.target === vVideo) return;
+  if (e.key === "ArrowLeft") verCorte(aberto.si, aberto.ci - 1, true);
+  if (e.key === "ArrowRight") verCorte(aberto.si, aberto.ci + 1, true);
+});
+async function copiar(texto, b, janela) {
+  try { await navigator.clipboard.writeText(texto); }
+  catch {
+    const ta = Object.assign(document.createElement("textarea"), { value: texto });
+    janela.append(ta); ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  const original = b.textContent;
+  b.textContent = "Copiado";
+  setTimeout(() => { b.textContent = original; }, 1400);
+}
+visor.addEventListener("click", e => {
+  const b = e.target.closest("[data-copiar]");
+  if (b && aberto) copiar(aberto[b.dataset.copiar], b, visor);
+});
+
+/* ---------- visor das compilações (vídeo horizontal) ---------- */
+const visorComp = $("#visor-comp"), cVideo = $("#c-video");
+let compAberta = null;
+function abrirCompilacao(i) {
+  const c = estado.compilacoes?.prontas[i];
+  if (!c) return;
+  compAberta = c;
+  sessoesNovas.delete(c.pasta);
+  $("#c-ordem").textContent = `COMPILAÇÃO · ${c.capitulos.length} MOMENTOS · ${relogio(c.duracao)}`;
+  $("#c-titulo").textContent = c.titulo;
+  $("#c-descricao").textContent = c.descricao;
+  const outros = c.titulos_ab || [];
+  $("#c-ab").hidden = !outros.length;
+  $("#c-ab-lista").innerHTML = outros.map((t, k) =>
+    `<div class="bloco-topo"><span>${esc(t)}</span><button class="fantasma" data-copiar-ab="${k}">Copiar</button></div>`).join("");
+  $("#c-baixar").href = midia(c.pasta, c.arquivo);
+  $("#c-baixar").download = c.arquivo;
+  $("#c-miniatura").href = midia(c.pasta, c.miniatura);
+  $("#c-miniatura").download = c.miniatura;
+  cVideo.src = midia(c.pasta, c.arquivo);
+  cVideo.poster = midia(c.pasta, c.miniatura);
+  desenharPublicacao();
+  if (!visorComp.open) visorComp.showModal();
+}
+visorComp.addEventListener("close", () => {
+  cVideo.pause(); cVideo.removeAttribute("src"); cVideo.load(); compAberta = null;
+  if (rota?.pagina === "compilacoes" && rota.resto[0]) { history.replaceState(null, "", "#/compilacoes"); rota = lerRota(); }
+});
+visorComp.addEventListener("click", e => {
+  if (e.target === visorComp) return visorComp.close();
+  const b = e.target.closest("[data-copiar]");
+  if (b && compAberta) copiar(compAberta[b.dataset.copiar], b, visorComp);
+  const ab = e.target.closest("[data-copiar-ab]");
+  if (ab && compAberta) copiar((compAberta.titulos_ab || [])[Number(ab.dataset.copiarAb)], ab, visorComp);
+});
+$("#c-fechar").addEventListener("click", () => visorComp.close());
+$("#c-pasta").addEventListener("click", () => compAberta && abrirPasta(compAberta.pasta).catch(erro => recado(erro.message, "erro")));
+
+/* ---------- publicar no YouTube: a janela que confere o que vai subir, o login e o andamento dos envios ---------- */
+const pub = $("#publicar"), pForm = $("#p-form");
+let pubAlvo = null;  // o que está para ser publicado: { tipo, pasta, arquivo, titulos, capas }
+const enviando = e => e.estado === "enviando" || e.estado === "miniatura";
+const ROTULO_PRIVACIDADE = { privado: "privado", nao_listado: "não listado", publico: "público", agendado: "agendado" };
+function avisoPub(texto, tom) {  // os recados da página ficam atrás da janela: o que acontece nela é dito nela
+  $("#p-aviso").hidden = !texto;
+  $("#p-aviso").textContent = texto || "";
+  $("#p-aviso").dataset.tom = tom || "";
+}
+function botaoPublicar(botao, link, pasta, arquivo) {
+  const feito = estado.youtube?.publicados?.[`${pasta}/${arquivo}`];
+  const e = (estado.youtube?.envios || []).find(x => x.pasta === pasta && x.arquivo === arquivo && enviando(x));
+  botao.hidden = !!feito;
+  link.hidden = !feito;
+  if (feito) link.href = feito.url;
+  botao.disabled = !!e;
+  botao.textContent = e ? (e.estado === "miniatura" ? "Enviando a miniatura…" : `Enviando… ${Math.round(e.pct)}%`) : "Publicar no YouTube";
+}
+function desenharJanelaPublicar() {
+  const y = estado.youtube, pronto = !!(y && y.configurado && y.conectado);
+  $("#p-antigo").hidden = !!y;
+  $("#p-falta").hidden = !y || y.configurado;
+  $("#p-entrar").hidden = !y || !y.configurado || y.conectado;
+  pForm.hidden = !pronto;
+  if (y && !y.configurado) {  // "falta o arquivo" já é o título desta etapa: aqui só entra o problema que não é esse
+    $("#p-problema").textContent = y.problema.startsWith("Falta a credencial") ? "" : y.problema;
+    $("#p-onde").textContent = y.pasta_credenciais;
+  }
+  if (pronto) $("#p-canal").textContent = y.canal ? `Vai para o canal ${y.canal}.` : "O canal está conectado.";
+  if (pronto && $("#p-aviso").dataset.tom === "espera") avisoPub("");
+}
+const enviosVistos = new Map(), enviosDispensados = new Set();
+let desenhoEnvios = "";
+function desenharEnvios() {
+  const todos = estado.youtube?.envios || [];
+  for (const e of todos) {
+    const antes = enviosVistos.get(e.id);
+    if (antes && antes !== e.estado && e.estado === "pronto") recado(`No YouTube: ${e.titulo}`, "ok");
+    if (antes && antes !== e.estado && e.estado === "erro") recado(e.erro, "erro");
+    enviosVistos.set(e.id, e.estado);
+  }
+  const html = todos.filter(e => !enviosDispensados.has(e.id)).map(e => {
+    const corpo = e.estado === "erro" ? `<p>${esc(e.erro)}</p>`
+      : e.estado === "pronto" ? `<p>Está no YouTube como ${ROTULO_PRIVACIDADE[e.privacidade] || "privado"}. <a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">Abrir ↗</a></p>${e.aviso ? `<p>${esc(e.aviso)}</p>` : ""}`
+      : `<div class="envio-barra"><i style="--p:${e.pct}%"></i></div><p>${e.estado === "miniatura" ? "Enviando a miniatura…" : `Enviando para o YouTube · ${Math.round(e.pct)}%`}</p>`;
+    const dispensar = enviando(e) ? "" : `<button class="fechar" data-dispensar-envio="${e.id}" aria-label="Dispensar" title="Dispensar">✕</button>`;
+    return `<div class="envio" data-estado="${e.estado}"><div class="envio-topo"><strong>${esc(e.titulo)}</strong>${dispensar}</div>${corpo}</div>`;
+  }).join("");
+  if (html !== desenhoEnvios) { $("#envios").innerHTML = html; desenhoEnvios = html; }
+}
+function desenharPublicacao() {
+  if (aberto) botaoPublicar($("#v-publicar"), $("#v-youtube"), aberto.pasta, aberto.arquivo);
+  if (compAberta) botaoPublicar($("#c-publicar"), $("#c-youtube"), compAberta.pasta, compAberta.arquivo);
+  if (pub.open) desenharJanelaPublicar();
+  desenharEnvios();
+  desenharTikTok();
+}
+/* ---------- TikTok ---------- */
+const tt = $("#tiktok");
+let ttAlvo = null, ttConfigurar = false, ttEnvio = null;  // o corte da janela; mostrar as chaves; o envio desta janela
+const ttVistos = new Map();
+const TT_SITUACAO = { SEND_TO_USER_INBOX: "Chegou! Abra o app do TikTok: o vídeo está nas notificações da caixa de entrada para você terminar a postagem.",
+  PUBLISH_COMPLETE: "Postado no TikTok.", PROCESSING_UPLOAD: "O TikTok está processando o vídeo…", PROCESSING_DOWNLOAD: "O TikTok está processando o vídeo…" };
+const TT_PRIV = { PUBLIC_TO_EVERYONE: "Todo mundo", MUTUAL_FOLLOW_FRIENDS: "Amigos (seguem um ao outro)", FOLLOWER_OF_CREATOR: "Seguidores", SELF_ONLY: "Só eu (privado)" };
+function avisoTT(texto, tom) { $("#t-aviso").hidden = !texto; $("#t-aviso").textContent = texto || ""; $("#t-aviso").dataset.tom = tom || ""; }
+function desenharTikTok() {
+  const t = estado.tiktok, envios = t?.envios || [];
+  for (const e of envios) {  // avisa na página quando um envio termina, mesmo com a janela fechada
+    const antes = ttVistos.get(e.id);
+    if (antes && antes !== e.estado && e.estado === "pronto") recado(e.modo === "direto" ? "Postado no TikTok." : "Vídeo na caixa de entrada do TikTok.", "ok");
+    if (antes && antes !== e.estado && e.estado === "erro") recado(e.erro, "erro");
+    ttVistos.set(e.id, e.estado);
+  }
+  if (aberto) {
+    const e = envios.find(x => x.pasta === aberto.pasta && x.arquivo === aberto.arquivo && (x.estado === "enviando" || x.estado === "processando"));
+    const feito = t?.enviados?.[`${aberto.pasta}/${aberto.arquivo}`];
+    $("#v-tiktok").hidden = !t;  // servidor antigo, sem TikTok: não mostra
+    $("#v-tiktok").textContent = e ? (e.estado === "processando" ? "TikTok processando…" : `TikTok · ${Math.round(e.pct)}%`)
+      : feito ? "Enviado pro TikTok ✓" : "Enviar pro TikTok";
+  }
+  if (!tt.open || !t) return;
+  const pronto = t.configurado && t.conectado && !ttConfigurar;
+  $("#t-config").hidden = t.configurado && !ttConfigurar;
+  $("#t-entrar").hidden = !t.configurado || t.conectado || ttConfigurar;
+  $("#t-form").hidden = !pronto;
+  if (!pronto) return;
+  $("#t-conta").textContent = t.conta ? `Vai para ${t.conta}.` : "A conta do TikTok está conectada.";
+  $("#t-explica").textContent = t.modo === "direto"
+    ? "Envio direto: o vídeo é postado na hora com esta legenda. Enquanto o TikTok não auditar o seu app, só funciona com a conta do TikTok privada."
+    : "Rascunho: o vídeo vai para a caixa de entrada do app do TikTok, onde você põe a legenda, o som e publica. Copie a legenda antes. O TikTok aceita até 5 rascunhos pendentes por dia.";
+  $("#t-priv-campo").hidden = t.modo !== "direto";
+  const e = ttEnvio && envios.find(x => x.id === ttEnvio);
+  $("#t-progresso").hidden = !e;
+  if (e) {
+    $("#t-barra").style.setProperty("--p", `${e.estado === "enviando" ? e.pct : 100}%`);
+    $("#t-situacao").textContent = e.estado === "erro" ? e.erro : e.estado === "enviando" ? `Enviando… ${Math.round(e.pct)}%`
+      : TT_SITUACAO[e.situacao] || (e.estado === "pronto" ? "Enviado." : "O TikTok está processando o vídeo…");
+  }
+  const ocupado = e && (e.estado === "enviando" || e.estado === "processando");
+  $("#t-enviar").disabled = !!ocupado;
+  $("#t-enviar").textContent = ocupado ? "Enviando…" : e?.estado === "pronto" ? "Enviar de novo" : "Enviar";
+}
+async function abrirTikTok() {
+  if (!aberto) return;
+  ttAlvo = { pasta: aberto.pasta, arquivo: aberto.arquivo };
+  ttConfigurar = false;
+  const ativo = (estado.tiktok?.envios || []).find(x => x.pasta === ttAlvo.pasta && x.arquivo === ttAlvo.arquivo);
+  ttEnvio = ativo?.id || null;
+  $("#t-legenda").value = [aberto.titulo, aberto.legenda].filter(Boolean).join("\n\n");
+  avisoTT("");
+  tt.showModal();
+  desenharTikTok();
+  if (estado.tiktok?.modo === "direto" && estado.tiktok.conectado) {
+    try {
+      const r = await api("/api/tiktok/privacidades", { method: "POST" });
+      $("#t-priv").innerHTML = r.opcoes.map(o => `<option value="${esc(o)}"${o === "SELF_ONLY" ? " selected" : ""}>${esc(TT_PRIV[o] || o)}</option>`).join("");
+    } catch (erro) { avisoTT(erro.message, "erro"); }
+  }
+}
+$("#v-tiktok").addEventListener("click", abrirTikTok);
+$("#t-fechar").addEventListener("click", () => tt.close());
+tt.addEventListener("click", e => { if (e.target === tt) tt.close(); });
+$("#t-chaves").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target.elements;
+  try {
+    await api("/api/tiktok/chaves", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_key: f.client_key.value, client_secret: f.client_secret.value, modo: f.modo.value }) });
+    f.client_secret.value = "";
+    ttConfigurar = false;
+    avisoTT("");
+    await atualizar(true);
+    if (tt.open && estado.tiktok?.conectado && estado.tiktok.modo === "direto") { tt.close(); abrirTikTok(); }
+  } catch (erro) { avisoTT(erro.message, "erro"); }
+});
+$("#t-conectar").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/tiktok/entrar", { method: "POST" });
+    window.open(r.url, "_blank", "noopener");
+    avisoTT("Autorize no TikTok e volte para esta janela.", "espera");
+  } catch (erro) { avisoTT(erro.message, "erro"); }
+});
+for (const id of ["#t-trocar", "#t-config-de-novo"]) $(id).addEventListener("click", () => {
+  ttConfigurar = true;
+  const f = $("#t-chaves").elements;
+  f.modo.value = estado.tiktok?.modo || "rascunho";
+  // já configurado: dá para trocar só o modo, sem colar as chaves de novo
+  f.client_key.placeholder = estado.tiktok?.configurado ? "Client key (vazio mantém a atual)" : "Client key";
+  f.client_secret.placeholder = estado.tiktok?.configurado ? "Client secret (vazio mantém o atual)" : "Client secret";
+  desenharTikTok();
+});
+$("#t-sair").addEventListener("click", async () => {
+  await api("/api/tiktok/sair", { method: "POST" }).catch(() => {});
+  await atualizar(true);
+});
+$("#t-copiar").addEventListener("click", e => copiar($("#t-legenda").value, e.target));
+$("#t-enviar").addEventListener("click", async () => {
+  if (!ttAlvo) return;
+  avisoTT("");
+  try {
+    if (estado.tiktok?.modo !== "direto") await navigator.clipboard?.writeText($("#t-legenda").value).catch(() => {});
+    const r = await api("/api/tiktok/publicar", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...ttAlvo, legenda: $("#t-legenda").value, privacidade: $("#t-priv").value }) });
+    ttEnvio = r.id;
+    if (estado.tiktok?.modo !== "direto") avisoTT("A legenda foi copiada: é só colar no app do TikTok quando o vídeo chegar.", "espera");
+    await atualizar(true);
+  } catch (erro) { avisoTT(erro.message, "erro"); }
+});
+
+function trocarQuando() {
+  const v = pForm.elements.privacidade.value;
+  $("#p-quando").hidden = v !== "agendado";
+  $("#p-resumo").textContent = v === "publico" ? "O vídeo fica público assim que o YouTube terminar de processar."
+    : v === "agendado" ? "O vídeo sobe privado e o YouTube torna público sozinho na hora marcada."
+    : "O vídeo sobe privado. Você confere no YouTube Studio e libera quando quiser.";
+}
+function abrirPublicar(alvo) {
+  pubAlvo = alvo;
+  vVideo.pause(); cVideo.pause();
+  avisoPub("");
+  $("#p-titulo").value = alvo.titulos[0];
+  $("#p-titulos").innerHTML = alvo.titulos.length > 1 ? alvo.titulos.map((t, k) =>
+    `<button type="button" data-p-titulo="${k}" aria-pressed="${k === 0}"><b>${"ABC"[k] || k + 1}</b><span>${esc(t)}</span></button>`).join("") : "";
+  $("#p-bloco-capas").hidden = !alvo.capas.length;
+  $("#p-capas").innerHTML = alvo.capas.map((n, k) =>
+    `<label class="p-capa" title="${esc(n)}"><input type="radio" name="capa" value="${esc(n)}"${k === 0 ? " checked" : ""}><img src="${midia(alvo.pasta, n)}" alt="${esc(n)}" loading="lazy"></label>`).join("");
+  let salva = "privado";
+  try { salva = localStorage.getItem("corte-maker-privacidade") || "privado"; } catch { /* usa o padrão */ }
+  pForm.elements.privacidade.value = ["privado", "agendado", "publico"].includes(salva) ? salva : "privado";
+  const local = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const amanha = new Date(Date.now() + 86400000);
+  amanha.setMinutes(0, 0, 0);
+  $("#p-quando").value = local(amanha);
+  $("#p-quando").min = local(new Date(Date.now() + 15 * 60000));
+  trocarQuando();
+  desenharJanelaPublicar();
+  if (!pub.open) pub.showModal();
+}
+pForm.addEventListener("change", e => {
+  if (e.target.name !== "privacidade") return;
+  trocarQuando();
+  try { localStorage.setItem("corte-maker-privacidade", e.target.value); } catch { /* segue sem lembrar */ }
+});
+$("#p-titulo").addEventListener("input", () => {
+  for (const b of document.querySelectorAll("[data-p-titulo]")) b.setAttribute("aria-pressed", String(pubAlvo?.titulos[b.dataset.pTitulo] === $("#p-titulo").value));
+});
+pub.addEventListener("click", async e => {
+  if (e.target === pub || e.target.closest("#p-fechar")) return pub.close();
+  const t = e.target.closest("[data-p-titulo]");
+  if (t) { $("#p-titulo").value = pubAlvo.titulos[t.dataset.pTitulo]; $("#p-titulo").dispatchEvent(new Event("input")); return; }
+  const pedir = caminho => api(caminho, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  try {
+    if (e.target.closest("#p-conectar")) {
+      const r = await pedir("/api/youtube/entrar");
+      window.open(r.url, "_blank");
+      avisoPub("Autorize na aba que abriu. Esta janela segue sozinha quando o Google responder.", "espera");
+    }
+    else if (e.target.closest("#p-sair")) { await pedir("/api/youtube/sair"); await atualizar(true); }
+    else if (e.target.closest("#p-abrir-pasta")) { await pedir("/api/youtube/pasta"); avisoPub("Pasta aberta no Explorador de Arquivos. Assim que o arquivo estiver lá, esta janela segue sozinha.", "espera"); }
+  } catch (erro) { avisoPub(erro.message, "erro"); }
+});
+pForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const botao = $("#p-enviar"), privacidade = pForm.elements.privacidade.value;
+  botao.disabled = true;
+  try {
+    await api("/api/youtube/publicar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      tipo: pubAlvo.tipo, pasta: pubAlvo.pasta, arquivo: pubAlvo.arquivo, titulo: $("#p-titulo").value.trim(), privacidade,
+      publicar_em: privacidade === "agendado" && $("#p-quando").value ? new Date($("#p-quando").value).toISOString() : "",
+      miniatura: pForm.elements.capa?.value || "" }) });
+    pub.close();
+    recado("Envio começou. O andamento fica no canto da tela.", "ok");
+    await atualizar(true);
+  } catch (erro) { avisoPub(erro.message, "erro"); }
+  finally { botao.disabled = false; }
+});
+document.addEventListener("click", e => {
+  const d = e.target.closest("[data-dispensar-envio]");
+  if (d) { enviosDispensados.add(d.dataset.dispensarEnvio); return desenharEnvios(); }
+  const b = e.target.closest("[data-publicar]");
+  if (!b) return;
+  if (b.dataset.publicar === "corte" && aberto) abrirPublicar({ tipo: "corte", pasta: aberto.pasta, arquivo: aberto.arquivo, titulos: [aberto.titulo], capas: [] });
+  else if (b.dataset.publicar === "compilacao" && compAberta) {
+    const c = compAberta;
+    abrirPublicar({ tipo: "compilacao", pasta: c.pasta, arquivo: c.arquivo, titulos: [c.titulo, ...(c.titulos_ab || [])],
+      capas: [...new Set([c.miniatura, ...(c.miniaturas_opcoes || []), c.miniatura_limpa].filter(Boolean))] });
+  }
+});
+
+aplicarRota();  // mostra já a página do endereço; sem endereço, a escolha fica para quando os dados chegarem
+atualizar();
+</script>
+</body>
+</html>
